@@ -288,13 +288,24 @@ const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
     const [recipientId, setRecipientId] = useState('');
     const [loading, setLoading] = useState(false);
     
+    // Mock user balance for the selected asset
+    const availableBalance = 1.2454;
+    
     const asset = assets.find(a => a.id === selectedId) || assets[0];
 
     const handleTransfer = () => {
-        if(!amount || parseFloat(amount) <= 0) {
+        const numAmount = parseFloat(amount);
+
+        if(!amount || isNaN(numAmount) || numAmount <= 0) {
             alert("Please enter a valid amount.");
             return;
         }
+
+        if (numAmount > availableBalance) {
+            alert("Insufficient funds for this transaction.");
+            return;
+        }
+
         if(!recipientId) {
             alert("Please enter a recipient User ID/Email.");
             return;
@@ -305,7 +316,22 @@ const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
         
         setTimeout(() => {
             setLoading(false);
-            console.log(`Transfer Successful: ${amount} ${asset.symbol} sent to ${recipientId}`);
+
+            // Simulate Balance Updates
+            const newSenderBalance = availableBalance - numAmount;
+            const recipientReceived = numAmount; // No fees for internal
+
+            // Log Transaction
+            console.log("--- TRANSACTION RECEIPT ---");
+            console.log(`Type: INTERNAL_TRANSFER`);
+            console.log(`Asset: ${asset.symbol}`);
+            console.log(`From: Current User (ME)`);
+            console.log(`To: ${recipientId}`);
+            console.log(`Amount: ${numAmount.toFixed(8)} ${asset.symbol}`);
+            console.log(`Sender Balance Updated: ${availableBalance.toFixed(8)} -> ${newSenderBalance.toFixed(8)}`);
+            console.log(`Recipient Balance Updated: +${recipientReceived.toFixed(8)}`);
+            console.log("---------------------------");
+
             alert(`Transfer of ${amount} ${asset.symbol} to ${recipientId} successful.`);
             onBack();
         }, 1500);
@@ -339,10 +365,15 @@ const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                         />
-                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-500 hover:text-amber-400">MAX</button>
+                        <button 
+                            onClick={() => setAmount(availableBalance.toString())}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-500 hover:text-amber-400"
+                        >
+                            MAX
+                        </button>
                      </div>
                      <div className="flex justify-between text-xs text-slate-500 px-1">
-                        <span>Available: 1.2454 {asset.symbol}</span>
+                        <span>Available: {availableBalance} {asset.symbol}</span>
                      </div>
                 </div>
 

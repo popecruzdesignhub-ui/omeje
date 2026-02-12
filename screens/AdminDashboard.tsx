@@ -5,7 +5,7 @@ import {
   MoreVertical, Server, Database, FileText, DollarSign,
   Lock, TrendingUp, Menu, ChevronRight, Wallet, CreditCard,
   Ban, Check, RefreshCcw, Eye, Trash2, Unlock, Clock,
-  Filter, ExternalLink, Calendar
+  Filter, ExternalLink, Calendar, Loader2
 } from 'lucide-react';
 import { GlassCard, Button, Input, Modal, Badge, Logo, ThemeToggle, LanguageSelector } from '../components/UI';
 import { AppScreen } from '../types';
@@ -54,12 +54,12 @@ const PENDING_KYC = [
   { id: 102, name: "John Wick", email: "john@continental.com", docType: "Driver License", submitted: "5 hours ago" },
 ];
 
-const PENDING_WITHDRAWALS = [
+const INITIAL_PENDING_WITHDRAWALS = [
   { id: 'tx_992', user: 'Alice Freeman', amount: '2.5 BTC', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', risk: 'Low', time: '15m ago', network: 'Bitcoin' },
   { id: 'tx_993', user: 'Charlie Day', amount: '50,000 USDT', address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F', risk: 'High', time: '1h ago', network: 'ERC20' },
 ];
 
-const WITHDRAWAL_HISTORY = [
+const INITIAL_WITHDRAWAL_HISTORY = [
   { id: 'tx_881', user: 'Bob Smith', amount: '100 USDT', address: '0x123...', status: 'Completed', time: 'Yesterday', network: 'TRC20', txHash: '0xabc...def' },
   { id: 'tx_882', user: 'Diana Prince', amount: '0.5 ETH', address: '0xabc...', status: 'Rejected', time: '2 days ago', network: 'ERC20', txHash: '' },
 ];
@@ -111,6 +111,7 @@ const UserManagement = ({ t }: { t: any }) => {
   const [fundAsset, setFundAsset] = useState('USDT');
   const [searchQuery, setSearchQuery] = useState('');
   const [kycFilter, setKycFilter] = useState<'All' | 'Verified' | 'Pending' | 'Unverified'>('All');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Filter and Sort Users
   const filteredUsers = useMemo(() => {
@@ -134,23 +135,29 @@ const UserManagement = ({ t }: { t: any }) => {
         return;
     }
     
-    // Simulate Backend Update
-    setUsers(users.map(u => u.id === selectedUser.id ? { ...u, balance: u.balance + parseFloat(fundAmount) } : u));
-    
-    // Log Transaction (Simulated Backend Log)
-    console.log("--- ADMIN FUNDING TRANSACTION LOG ---");
-    console.log(`Transaction ID: ADM_TX_${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
-    console.log(`Timestamp: ${new Date().toISOString()}`);
-    console.log(`Admin User: CURRENT_ADMIN_SESSION`);
-    console.log(`Target User: ${selectedUser.name} (ID: ${selectedUser.id})`);
-    console.log(`Asset: ${fundAsset}`);
-    console.log(`Amount: ${fundAmount}`);
-    console.log(`New Balance: ${selectedUser.balance + parseFloat(fundAmount)}`);
-    console.log("-------------------------------------");
+    setIsProcessing(true);
 
-    setFundingModalOpen(false);
-    setFundAmount('');
-    alert(`Successfully credited ${fundAmount} ${fundAsset} to ${selectedUser.name}. Transaction logged.`);
+    // Simulate network delay for backend processing
+    setTimeout(() => {
+        // Simulate Backend Update
+        setUsers(prevUsers => prevUsers.map(u => u.id === selectedUser.id ? { ...u, balance: u.balance + parseFloat(fundAmount) } : u));
+        
+        // Log Transaction (Simulated Backend Log)
+        console.log("--- ADMIN FUNDING TRANSACTION LOG ---");
+        console.log(`Transaction ID: ADM_TX_${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
+        console.log(`Timestamp: ${new Date().toISOString()}`);
+        console.log(`Admin User: CURRENT_ADMIN_SESSION`);
+        console.log(`Target User: ${selectedUser.name} (ID: ${selectedUser.id})`);
+        console.log(`Asset: ${fundAsset}`);
+        console.log(`Amount: ${fundAmount}`);
+        console.log(`New Balance: ${selectedUser.balance + parseFloat(fundAmount)}`);
+        console.log("-------------------------------------");
+
+        setIsProcessing(false);
+        setFundingModalOpen(false);
+        setFundAmount('');
+        alert(`Successfully credited ${fundAmount} ${fundAsset} to ${selectedUser.name}. Transaction logged.`);
+    }, 1500);
   };
 
   const toggleLockUser = (userId: number) => {
@@ -308,7 +315,7 @@ const UserManagement = ({ t }: { t: any }) => {
 
       <Modal 
         isOpen={fundingModalOpen} 
-        onClose={() => setFundingModalOpen(false)} 
+        onClose={() => !isProcessing && setFundingModalOpen(false)} 
         title={`${t.adminDeposit}: ${selectedUser?.name}`}
       >
         <div className="space-y-4 py-2">
@@ -348,8 +355,13 @@ const UserManagement = ({ t }: { t: any }) => {
           />
           
           <div className="flex gap-3 mt-4">
-              <Button variant="secondary" onClick={() => setFundingModalOpen(false)}>{t.cancel}</Button>
-              <Button onClick={handleFundSubmit} variant="primary" className="bg-emerald-500 hover:bg-emerald-600 border-none text-white shadow-lg shadow-emerald-500/20">
+              <Button variant="secondary" onClick={() => setFundingModalOpen(false)} disabled={isProcessing}>{t.cancel}</Button>
+              <Button 
+                onClick={handleFundSubmit} 
+                variant="primary" 
+                isLoading={isProcessing}
+                className="bg-emerald-500 hover:bg-emerald-600 border-none text-white shadow-lg shadow-emerald-500/20"
+              >
                 {t.confirmDeposit}
               </Button>
           </div>
@@ -407,6 +419,54 @@ const KYCQueue = ({ t }: { t: any }) => (
 const WithdrawalQueue = ({ t }: { t: any }) => {
     const [tab, setTab] = useState<'pending' | 'history'>('pending');
     const [selectedTx, setSelectedTx] = useState<any>(null);
+    const [pendingWithdrawals, setPendingWithdrawals] = useState(INITIAL_PENDING_WITHDRAWALS);
+    const [withdrawalHistory, setWithdrawalHistory] = useState(INITIAL_WITHDRAWAL_HISTORY);
+    const [processingId, setProcessingId] = useState<string | null>(null);
+
+    const handleApprove = (tx: any) => {
+        if (confirm(`Approve withdrawal of ${tx.amount} for ${tx.user}?`)) {
+            setProcessingId(tx.id);
+            console.log(`[BACKEND] Processing withdrawal approval for ${tx.id}...`);
+            
+            setTimeout(() => {
+                // Move to history
+                const completedTx = { ...tx, status: 'Completed', time: 'Just now', txHash: `0x${Math.random().toString(36).substr(2, 40)}` };
+                setWithdrawalHistory([completedTx, ...withdrawalHistory]);
+                setPendingWithdrawals(pendingWithdrawals.filter(p => p.id !== tx.id));
+                setProcessingId(null);
+                
+                console.log("--- WITHDRAWAL APPROVED ---");
+                console.log(`Transaction ID: ${tx.id}`);
+                console.log(`User: ${tx.user}`);
+                console.log(`Amount: ${tx.amount}`);
+                console.log(`Status: COMPLETED`);
+                console.log(`Backend Action: Deduct ${tx.amount} from locked balance. Release to blockchain.`);
+                console.log("---------------------------");
+            }, 1500);
+        }
+    };
+
+    const handleReject = (tx: any) => {
+        if (confirm(`Reject withdrawal of ${tx.amount} for ${tx.user}?`)) {
+            setProcessingId(tx.id);
+            console.log(`[BACKEND] Processing withdrawal rejection for ${tx.id}...`);
+            
+            setTimeout(() => {
+                 // Move to history
+                const rejectedTx = { ...tx, status: 'Rejected', time: 'Just now' };
+                setWithdrawalHistory([rejectedTx, ...withdrawalHistory]);
+                setPendingWithdrawals(pendingWithdrawals.filter(p => p.id !== tx.id));
+                 setProcessingId(null);
+                 
+                console.log("--- WITHDRAWAL REJECTED ---");
+                console.log(`Transaction ID: ${tx.id}`);
+                console.log(`User: ${tx.user}`);
+                console.log(`Reason: Admin Decision`);
+                console.log(`Backend Action: Return ${tx.amount} to user main balance.`);
+                console.log("---------------------------");
+            }, 1500);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in">
@@ -441,7 +501,7 @@ const WithdrawalQueue = ({ t }: { t: any }) => {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                    {(tab === 'pending' ? PENDING_WITHDRAWALS : WITHDRAWAL_HISTORY).map((tx: any) => (
+                    {(tab === 'pending' ? pendingWithdrawals : withdrawalHistory).map((tx: any) => (
                     <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
                         <td className="p-4 font-medium text-slate-900 dark:text-white flex flex-col">
                             <span>{tx.user}</span>
@@ -477,11 +537,21 @@ const WithdrawalQueue = ({ t }: { t: any }) => {
                             </Button>
                             {tab === 'pending' && (
                                 <>
-                                    <button className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 border border-rose-500/20 hover:text-white transition-all">
-                                        <Ban className="w-4 h-4" />
+                                    <button 
+                                        onClick={() => handleReject(tx)}
+                                        disabled={!!processingId}
+                                        className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 border border-rose-500/20 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={t.reject}
+                                    >
+                                        {processingId === tx.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
                                     </button>
-                                    <button className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 border border-emerald-500/20 hover:text-white transition-all">
-                                        <Check className="w-4 h-4" />
+                                    <button 
+                                        onClick={() => handleApprove(tx)}
+                                        disabled={!!processingId}
+                                        className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 border border-emerald-500/20 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={t.approve}
+                                    >
+                                        {processingId === tx.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                                     </button>
                                 </>
                             )}
@@ -501,7 +571,7 @@ const WithdrawalQueue = ({ t }: { t: any }) => {
             >
                 {selectedTx && (
                     <div className="space-y-4">
-                        <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-3">
+                        <div className="p-4 rounded-xl bg-slate-5 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-3">
                             <div className="flex justify-between">
                                 <span className="text-sm text-slate-500 dark:text-slate-400">User</span>
                                 <span className="font-medium text-slate-900 dark:text-white">{selectedTx.user}</span>
@@ -536,6 +606,26 @@ const WithdrawalQueue = ({ t }: { t: any }) => {
                         </div>
                         <div className="flex justify-end gap-3 pt-2">
                              <Button variant="secondary" onClick={() => setSelectedTx(null)}>Close</Button>
+                             {tab === 'pending' && (
+                                <>
+                                   <Button 
+                                      variant="danger" 
+                                      className="w-auto"
+                                      onClick={() => { handleReject(selectedTx); setSelectedTx(null); }}
+                                      isLoading={processingId === selectedTx.id}
+                                   >
+                                      Reject
+                                   </Button>
+                                   <Button 
+                                      variant="primary" 
+                                      className="w-auto bg-emerald-500 hover:bg-emerald-600 border-none"
+                                      onClick={() => { handleApprove(selectedTx); setSelectedTx(null); }}
+                                      isLoading={processingId === selectedTx.id}
+                                   >
+                                      Approve
+                                   </Button>
+                                </>
+                             )}
                         </div>
                     </div>
                 )}
@@ -664,196 +754,154 @@ const AdminOverview = ({ t }: { t: any }) => (
                         <Users className="w-6 h-6" />
                     </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 mt-4">
-                    <span className="bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">+124 today</span>
-                    <span className="text-slate-500">Online: 842</span>
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                     <div className="bg-blue-500 h-full w-[45%] shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
                 </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">+8% new signups</p>
             </GlassCard>
 
-            <GlassCard className="relative overflow-hidden border-rose-500/30 bg-rose-500/5 group">
-                <div className="absolute top-0 right-0 p-8 bg-rose-500/10 blur-2xl rounded-full group-hover:bg-rose-500/20 transition-all" />
+             <GlassCard className="relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-8 bg-amber-500/10 blur-2xl rounded-full group-hover:bg-amber-500/20 transition-all" />
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <p className="text-rose-600 dark:text-rose-400 text-xs font-bold uppercase tracking-wider">{t.pendingActions}</p>
-                        <h3 className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">5</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">{t.pendingActions}</p>
+                        <h3 className="text-3xl font-bold mt-1 text-slate-900 dark:text-white">24</h3>
                     </div>
-                    <div className="p-3 bg-rose-500/10 rounded-xl text-rose-600 dark:text-rose-400 border border-rose-500/20 animate-pulse">
+                    <div className="p-3 bg-amber-500/10 rounded-xl text-amber-600 dark:text-amber-400 border border-amber-500/20">
                         <AlertTriangle className="w-6 h-6" />
                     </div>
                 </div>
-                 <div className="text-xs text-rose-600 dark:text-rose-400 mt-4 font-medium flex gap-3">
-                    <span className="underline cursor-pointer hover:text-rose-500 dark:hover:text-rose-300">2 KYC Approvals</span>
-                    <span className="underline cursor-pointer hover:text-rose-500 dark:hover:text-rose-300">3 Withdrawals</span>
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                     <div className="bg-amber-500 h-full w-[30%] shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
                 </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">Requires attention</p>
             </GlassCard>
         </div>
 
-        {/* Live System Feed Table */}
+        {/* Live Feed */}
         <div className="space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-amber-500" /> {t.liveFeed}
-            </h3>
-            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-lg">
-              <div className="overflow-x-auto">
+             <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t.liveFeed}</h2>
+                <button className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white">View Full Log</button>
+             </div>
+             <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-white/5 uppercase text-xs">
+                    <thead className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
                         <tr>
-                            <th className="p-4">Time</th>
-                            <th className="p-4">User</th>
                             <th className="p-4">Action</th>
-                            <th className="p-4">Details</th>
-                            <th className="p-4 text-right">Status</th>
+                            <th className="p-4">User</th>
+                            <th className="p-4">Detail</th>
+                            <th className="p-4 text-right">Time</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                         {RECENT_ACTIVITY.map(act => (
-                            <tr key={act.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                <td className="p-4 text-slate-500 font-mono text-xs">{act.time}</td>
-                                <td className="p-4 font-bold text-slate-900 dark:text-white">{act.user}</td>
+                            <tr key={act.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
                                 <td className="p-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                        act.action === 'Deposit' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                                        act.action === 'Withdraw' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
-                                        act.action === 'System' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                                        act.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                                        act.status === 'warning' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
                                         'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                                     }`}>
                                         {act.action}
                                     </span>
                                 </td>
-                                <td className="p-4 text-slate-600 dark:text-slate-300">{act.detail}</td>
-                                <td className="p-4 text-right">
-                                    <div className="flex justify-end">
-                                         {act.status === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                                         {act.status === 'pending' && <Clock className="w-4 h-4 text-amber-500 animate-pulse" />}
-                                         {act.status === 'warning' && <AlertTriangle className="w-4 h-4 text-rose-500" />}
-                                    </div>
-                                </td>
+                                <td className="p-4 font-medium text-slate-900 dark:text-white">{act.user}</td>
+                                <td className="p-4 text-slate-600 dark:text-slate-400">{act.detail}</td>
+                                <td className="p-4 text-right text-slate-500 text-xs">{act.time}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-              </div>
-                <div className="p-3 text-center border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02]">
-                    <button className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">View All Activity Log</button>
-                </div>
-            </div>
+             </div>
         </div>
     </div>
 );
 
-// --- Main Admin Layout ---
-
 export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggleTheme, lang, setLang }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const t = translations[lang];
-
-  const handleTabChange = (tab: AdminTab) => {
-    setActiveTab(tab);
-    setIsMobileMenuOpen(false);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#020617] text-slate-900 dark:text-white flex transition-colors duration-300">
-      {/* Mobile Backdrop */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
       {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-[#0B0E14] border-r border-slate-200 dark:border-white/5 
-        flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:static'}
-      `}>
-        <div className="p-6 border-b border-slate-100 dark:border-white/5">
-          <div className="flex items-center gap-3">
-             <Logo className="w-10 h-10" />
-            <div>
-              <h1 className="font-bold text-lg leading-tight">Admin</h1>
-              <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Console</p>
-            </div>
+      <aside className="w-64 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex-col hidden lg:flex fixed h-full z-20">
+        <div className="p-6 border-b border-slate-200 dark:border-white/5">
+           <div className="flex items-center gap-2 mb-1 cursor-pointer" onClick={() => setScreen(AppScreen.DASHBOARD)}>
+            <Logo className="w-8 h-8" />
+            <span className="font-bold text-lg tracking-tight">Psychology Trade</span>
+          </div>
+          <div className="flex items-center gap-2 px-2 py-1 bg-amber-500/10 rounded border border-amber-500/20 w-fit mt-2">
+            <ShieldAlert className="w-3 h-3 text-amber-600 dark:text-amber-500" />
+            <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-500 tracking-wider">Admin Access</span>
           </div>
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase px-3 mb-2">Management</p>
-          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} />
-          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => handleTabChange('users')} />
-          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => handleTabChange('kyc')} badge={2} />
+        <div className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-2">Main</p>
+          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => setActiveTab('users')} badge={24} />
           
-          <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase px-3 mb-2 mt-6">Finance</p>
-          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => handleTabChange('withdrawals')} badge={3} />
-          <SidebarItem icon={CreditCard} label={t.transactions} active={activeTab === 'transactions'} onClick={() => handleTabChange('transactions')} />
-          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => handleTabChange('fees')} />
+          <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-6">Operations</p>
+          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => setActiveTab('kyc')} badge={5} />
+          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => setActiveTab('withdrawals')} badge={2} />
+          <SidebarItem icon={FileText} label={t.transactions} active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
           
-          <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase px-3 mb-2 mt-6">System</p>
-          <SidebarItem icon={Lock} label={t.securityLogs} active={activeTab === 'security'} onClick={() => handleTabChange('security')} />
+          <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-6">System</p>
+          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => setActiveTab('fees')} />
+          <SidebarItem icon={ShieldAlert} label={t.securityLogs} active={activeTab === 'security'} onClick={() => setActiveTab('security')} />
           <SidebarItem icon={Settings} label={t.settings} active={false} onClick={() => {}} />
-        </nav>
+        </div>
 
-        <div className="p-4 border-t border-slate-100 dark:border-white/5 space-y-3">
-           <div className="flex justify-between items-center px-1">
-              <ThemeToggle isDark={isDark} toggle={toggleTheme} />
-              <LanguageSelector current={lang} onChange={setLang} />
-           </div>
-          <button 
+        <div className="p-4 border-t border-slate-200 dark:border-white/5">
+           <button 
              onClick={() => setScreen(AppScreen.SIGN_IN)}
-             className="w-full flex items-center gap-3 p-3 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
-          >
+             className="w-full flex items-center gap-3 p-3 text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
+           >
              <LogOut className="w-5 h-5" />
              <span className="font-medium text-sm">{t.logout}</span>
-          </button>
+           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 px-6 py-4 flex justify-between items-center lg:hidden">
-          <div className="flex items-center gap-3">
-             <ShieldAlert className="w-6 h-6 text-rose-500" />
-             <span className="font-bold">{t.adminConsole}</span>
-          </div>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            <Menu className="w-6 h-6 text-slate-900 dark:text-white" />
-          </button>
-        </header>
+      <main className="flex-1 lg:ml-64 p-4 lg:p-8 overflow-y-auto h-screen">
+        <header className="flex justify-between items-center mb-8">
+           <div className="lg:hidden">
+              <Logo className="w-8 h-8" />
+           </div>
+           
+           <div className="hidden lg:block">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.adminConsole}</h1>
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                 {t.systemStable}
+              </p>
+           </div>
 
-        {/* Desktop Header Content (Right Side) */}
-        <header className="hidden lg:flex sticky top-0 z-30 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 px-8 py-4 justify-between items-center transition-colors duration-300">
-             <h2 className="text-lg font-bold capitalize text-slate-900 dark:text-white">{activeTab.replace('-', ' ')}</h2>
-             <div className="flex items-center gap-4">
-                 <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-900/50 rounded-full px-4 py-1.5 border border-slate-200 dark:border-white/10">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-mono text-slate-600 dark:text-slate-300">{t.systemStable}</span>
+           <div className="flex items-center gap-4">
+              <LanguageSelector current={lang} onChange={setLang} />
+              <ThemeToggle isDark={isDark} toggle={toggleTheme} />
+              <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-white/10">
+                 <div className="text-right hidden sm:block">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">Admin User</p>
+                    <p className="text-xs text-slate-500">Super Admin</p>
                  </div>
-                 <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white relative">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full"></span>
-                 </button>
-                 <div className="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-rose-500/20">AD</div>
-             </div>
+                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+                    <ShieldAlert className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                 </div>
+              </div>
+           </div>
         </header>
 
-        <main className="p-6 max-w-7xl mx-auto w-full">
-           {activeTab === 'overview' && <AdminOverview t={t} />}
-           {activeTab === 'users' && <UserManagement t={t} />}
-           {activeTab === 'kyc' && <KYCQueue t={t} />}
-           {activeTab === 'withdrawals' && <WithdrawalQueue t={t} />}
-           {activeTab === 'fees' && <FeesConfig t={t} />}
-           {activeTab === 'security' && <SecurityAudit t={t} />}
-           {activeTab === 'transactions' && (
-              <div className="text-center py-20 text-slate-500">
-                  <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Transaction explorer loading...</p>
-              </div>
-           )}
-        </main>
-      </div>
+        {/* Tab Content */}
+        {activeTab === 'overview' && <AdminOverview t={t} />}
+        {activeTab === 'users' && <UserManagement t={t} />}
+        {activeTab === 'kyc' && <KYCQueue t={t} />}
+        {activeTab === 'withdrawals' && <WithdrawalQueue t={t} />}
+        {activeTab === 'fees' && <FeesConfig t={t} />}
+        {activeTab === 'security' && <SecurityAudit t={t} />}
+      </main>
     </div>
   );
 };

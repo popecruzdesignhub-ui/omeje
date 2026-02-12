@@ -113,7 +113,7 @@ export const LanguageSelector: React.FC<{ current: Language; onChange: (l: Langu
         {(['en', 'es', 'fr'] as Language[]).map(lang => (
           <button 
             key={lang}
-            onClick={() => onChange(lang)}
+            onClick={() => onChange && onChange(lang)}
             className={`w-full text-left px-4 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5 transition-colors ${current === lang ? 'text-amber-500' : 'text-slate-700 dark:text-slate-300'}`}
           >
             {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : 'Français'}

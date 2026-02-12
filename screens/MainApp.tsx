@@ -14,20 +14,59 @@ import { TradingDashboard } from './TradingDashboard';
 import { WalletDashboard } from './WalletScreens';
 import { Language } from '../services/translations';
 
+// --- Currency Config ---
+const CURRENCIES = {
+  USD: { symbol: '$', rate: 1 },
+  EUR: { symbol: '€', rate: 0.92 },
+  GBP: { symbol: '£', rate: 0.79 },
+  JPY: { symbol: '¥', rate: 150.0 },
+};
+type CurrencyCode = keyof typeof CURRENCIES;
+
+const CurrencySelector = ({ current, onChange }: { current: CurrencyCode; onChange: (c: CurrencyCode) => void }) => (
+    <div className="relative group">
+      <button className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-200 dark:bg-white/5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">
+        <span>{CURRENCIES[current].symbol}</span>
+        <span>{current}</span>
+      </button>
+      <div className="absolute top-full right-0 mt-2 w-24 bg-white dark:bg-[#1e2329] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden hidden group-hover:block z-50">
+        {(Object.keys(CURRENCIES) as CurrencyCode[]).map(c => (
+          <button 
+            key={c}
+            onClick={() => onChange(c)}
+            className={`w-full text-left px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5 transition-colors ${current === c ? 'text-amber-500' : 'text-slate-700 dark:text-slate-300'}`}
+          >
+            {CURRENCIES[c].symbol} {c}
+          </button>
+        ))}
+      </div>
+    </div>
+);
+
 // --- Dashboard Component ---
 const DashboardHome = ({ 
   assets, 
   watchlist, 
   onViewAsset,
-  onStartTrading
+  onStartTrading,
+  currency,
+  rate
 }: { 
   assets: Asset[], 
   watchlist: string[], 
   onViewAsset: (a: Asset) => void,
-  onStartTrading: () => void
+  onStartTrading: () => void,
+  currency: { symbol: string; code: string },
+  rate: number
 }) => {
   const watchedAssets = assets.filter(a => watchlist.includes(a.id));
   const [showBalance, setShowBalance] = useState(true);
+  
+  const formatPrice = (price: number) => {
+    return `${currency.symbol}${(price * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const totalBalance = 42850.25 * rate;
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-24">
@@ -47,7 +86,7 @@ const DashboardHome = ({
                 </button>
               </div>
               <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
-                {showBalance ? "$42,850.25" : "••••••••"}
+                {showBalance ? `${currency.symbol}${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "••••••••"}
               </h1>
             </div>
             <Badge value={12.5} />
@@ -94,7 +133,7 @@ const DashboardHome = ({
                    <Sparkline data={asset.history.slice(-10)} color={asset.color} isPositive={asset.change24h >= 0} />
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-slate-900 dark:text-white">${asset.price.toLocaleString()}</p>
+                  <p className="font-medium text-slate-900 dark:text-white">{formatPrice(asset.price)}</p>
                   <div className={`text-xs font-medium ${asset.change24h >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                     {asset.change24h > 0 ? '+' : ''}{asset.change24h.toFixed(2)}%
                   </div>
@@ -127,7 +166,7 @@ const DashboardHome = ({
                  <Sparkline data={asset.history.slice(-10)} color={asset.color} isPositive={asset.change24h >= 0} />
               </div>
               <div className="text-right">
-                <p className="font-medium text-slate-900 dark:text-white">${asset.price.toLocaleString()}</p>
+                <p className="font-medium text-slate-900 dark:text-white">{formatPrice(asset.price)}</p>
                 <div className={`text-xs font-medium ${asset.change24h >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                   {asset.change24h > 0 ? '+' : ''}{asset.change24h.toFixed(2)}%
                 </div>
@@ -140,7 +179,21 @@ const DashboardHome = ({
   );
 };
 
-const AssetDetail = ({ asset, isWatched, onToggleWatch, onBack }: { asset: Asset; isWatched: boolean; onToggleWatch: () => void; onBack: () => void; }) => {
+const AssetDetail = ({ 
+  asset, 
+  isWatched, 
+  onToggleWatch, 
+  onBack,
+  currency,
+  rate
+}: { 
+  asset: Asset; 
+  isWatched: boolean; 
+  onToggleWatch: () => void; 
+  onBack: () => void;
+  currency: { symbol: string; code: string };
+  rate: number;
+}) => {
   const [insight, setInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
@@ -148,6 +201,11 @@ const AssetDetail = ({ asset, isWatched, onToggleWatch, onBack }: { asset: Asset
   const [timeframe, setTimeframe] = useState('1D');
   const fetchInsight = async () => { if (insight) return; setLoadingInsight(true); const text = await getMarketInsight(asset); setInsight(text); setLoadingInsight(false); };
   
+  const formatPrice = (price: number) => {
+    return `${currency.symbol}${(price * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  const totalBalance = 42850.25 * rate;
+
   return (
     <div className="animate-in slide-in-from-right duration-300 pb-28">
       <div className="sticky top-0 z-20 bg-gray-50/80 dark:bg-[#020617]/80 backdrop-blur-md -mx-6 px-6 py-4 flex items-center justify-between mb-4 border-b border-slate-200 dark:border-white/5">
@@ -160,7 +218,7 @@ const AssetDetail = ({ asset, isWatched, onToggleWatch, onBack }: { asset: Asset
       <div className="px-1">
         <div className="mb-8">
             <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Current Price</p>
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">${asset.price.toLocaleString()}</h1>
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">{formatPrice(asset.price)}</h1>
             <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex flex-col items-center justify-center gap-1">
                      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">24h</span>
@@ -180,22 +238,40 @@ const AssetDetail = ({ asset, isWatched, onToggleWatch, onBack }: { asset: Asset
         <div className="flex justify-between bg-slate-200 dark:bg-white/5 p-1 rounded-xl mb-8">{['1H', '1D', '1W', '1M', '1Y'].map((tf) => (<button key={tf} onClick={() => setTimeframe(tf)} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${timeframe === tf ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>{tf}</button>))}</div>
         {loadingInsight && (<GlassCard className="mb-6 animate-pulse border-indigo-500/20 bg-indigo-500/5"><div className="flex items-center gap-2 mb-3"><div className="w-4 h-4 bg-indigo-500/20 rounded"></div><div className="h-4 w-32 bg-indigo-500/20 rounded"></div></div><div className="space-y-2"><div className="h-3 w-full bg-indigo-500/10 rounded"></div><div className="h-3 w-5/6 bg-indigo-500/10 rounded"></div><div className="h-3 w-4/6 bg-indigo-500/10 rounded"></div></div></GlassCard>)}
         {insight && (<GlassCard className="mb-6 border-indigo-500/30 bg-indigo-500/5 relative overflow-hidden"><div className="absolute top-0 right-0 p-16 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none" /><div className="relative z-10"><div className="flex items-center gap-2 mb-3 text-indigo-500 dark:text-indigo-400"><Sparkles className="w-4 h-4" /><h4 className="font-bold text-sm uppercase tracking-wider">AI Market Analysis</h4></div><p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-light">{insight}</p></div></GlassCard>)}
-        <div className="grid grid-cols-2 gap-4 mb-8"><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">Market Cap</p><p className="font-bold text-lg text-slate-900 dark:text-white">{asset.marketCap}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">24h Volume</p><p className="font-bold text-lg text-slate-900 dark:text-white">{asset.volume}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">All Time High</p><p className="font-bold text-lg text-slate-900 dark:text-white">$69,000.00</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">Circulating Supply</p><p className="font-bold text-lg text-slate-900 dark:text-white">19.5M</p></GlassCard></div>
+        <div className="grid grid-cols-2 gap-4 mb-8"><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">Market Cap</p><p className="font-bold text-lg text-slate-900 dark:text-white">{asset.marketCap}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">24h Volume</p><p className="font-bold text-lg text-slate-900 dark:text-white">{asset.volume}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">All Time High</p><p className="font-bold text-lg text-slate-900 dark:text-white">{formatPrice(69000)}</p></GlassCard><GlassCard className="p-4"><p className="text-xs text-slate-500 mb-1">Circulating Supply</p><p className="font-bold text-lg text-slate-900 dark:text-white">19.5M</p></GlassCard></div>
       </div>
       <div className="fixed bottom-0 left-0 w-full p-6 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 flex gap-4 z-40"><Button variant="danger" className="flex-1" onClick={() => { setTradeType('sell'); setTradeModalOpen(true); }}>Sell</Button><Button variant="primary" className="flex-1" onClick={() => { setTradeType('buy'); setTradeModalOpen(true); }}>Buy</Button></div>
-      <Modal isOpen={tradeModalOpen} onClose={() => setTradeModalOpen(false)} title={`${tradeType === 'buy' ? 'Buy' : 'Sell'} ${asset.symbol}`}><div className="space-y-8 py-4"><div className="text-center space-y-2"><p className="text-slate-500 dark:text-slate-400 text-sm">Enter Amount (USD)</p><div className="flex items-center justify-center gap-1 relative"><span className="text-3xl text-slate-400 dark:text-slate-600 font-light">$</span><input type="number" className="bg-transparent text-5xl font-bold text-slate-900 dark:text-white text-center w-48 focus:outline-none placeholder-slate-300 dark:placeholder-slate-700" placeholder="0" autoFocus /></div><p className="text-xs text-slate-500">Available Balance: $42,850.25</p></div><div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-4 space-y-3"><div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Price</span><span className="font-medium text-slate-900 dark:text-white">${asset.price.toLocaleString()}</span></div><div className="w-full h-px bg-slate-200 dark:bg-white/5" /><div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Est. Receive</span><span className="font-medium text-slate-900 dark:text-white">0.00 {asset.symbol}</span></div><div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Fee (0%)</span><span className="font-medium text-emerald-500 dark:text-emerald-400">FREE</span></div></div><Button onClick={() => { setTradeModalOpen(false); }} variant={tradeType === 'buy' ? 'primary' : 'danger'}>Confirm {tradeType === 'buy' ? 'Buy' : 'Sell'}</Button></div></Modal>
+      <Modal isOpen={tradeModalOpen} onClose={() => setTradeModalOpen(false)} title={`${tradeType === 'buy' ? 'Buy' : 'Sell'} ${asset.symbol}`}><div className="space-y-8 py-4"><div className="text-center space-y-2"><p className="text-slate-500 dark:text-slate-400 text-sm">Enter Amount ({currency.code})</p><div className="flex items-center justify-center gap-1 relative"><span className="text-3xl text-slate-400 dark:text-slate-600 font-light">{currency.symbol}</span><input type="number" className="bg-transparent text-5xl font-bold text-slate-900 dark:text-white text-center w-48 focus:outline-none placeholder-slate-300 dark:placeholder-slate-700" placeholder="0" autoFocus /></div><p className="text-xs text-slate-500">Available Balance: {currency.symbol}{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div><div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-4 space-y-3"><div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Price</span><span className="font-medium text-slate-900 dark:text-white">{formatPrice(asset.price)}</span></div><div className="w-full h-px bg-slate-200 dark:bg-white/5" /><div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Est. Receive</span><span className="font-medium text-slate-900 dark:text-white">0.00 {asset.symbol}</span></div><div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Fee (0%)</span><span className="font-medium text-emerald-500 dark:text-emerald-400">FREE</span></div></div><Button onClick={() => { setTradeModalOpen(false); }} variant={tradeType === 'buy' ? 'primary' : 'danger'}>Confirm {tradeType === 'buy' ? 'Buy' : 'Sell'}</Button></div></Modal>
     </div>
   );
 };
 
-const MarketList = ({ assets, watchlist, toggleWatchlist, onViewAsset }: { assets: Asset[], watchlist: string[], toggleWatchlist: (id: string) => void, onViewAsset: (a: Asset) => void }) => {
+const MarketList = ({ 
+  assets, 
+  watchlist, 
+  toggleWatchlist, 
+  onViewAsset,
+  currency,
+  rate
+}: { 
+  assets: Asset[], 
+  watchlist: string[], 
+  toggleWatchlist: (id: string) => void, 
+  onViewAsset: (a: Asset) => void,
+  currency: { symbol: string; code: string },
+  rate: number
+}) => {
+    const formatPrice = (price: number) => {
+      return `${currency.symbol}${(price * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
     return (
         <div className="animate-in fade-in duration-500 pb-24">
             <h2 className="text-2xl font-bold mb-6 px-1 text-slate-900 dark:text-white">Market</h2>
             <div className="mb-6 relative px-1"><Search className="absolute left-5 top-3.5 w-5 h-5 text-slate-500" /><input type="text" placeholder="Search assets..." className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-4 text-slate-900 dark:text-white focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 outline-none transition-all placeholder-slate-400 dark:placeholder-slate-600"/></div>
             <div className="space-y-2">
                 <div className="grid grid-cols-12 text-xs font-medium text-slate-500 px-4 pb-2"><span className="col-span-1"></span><span className="col-span-5">Asset</span><span className="col-span-3 text-right">Price</span><span className="col-span-3 text-right">24h</span></div>
-                {assets.map(asset => { const isWatched = watchlist.includes(asset.id); return (<div key={asset.id} onClick={() => onViewAsset(asset)} className="grid grid-cols-12 items-center p-4 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-white/5 active:scale-[0.99] group"><div className="col-span-1" onClick={(e) => { e.stopPropagation(); toggleWatchlist(asset.id); }}><Star className={`w-4 h-4 transition-colors ${isWatched ? 'text-amber-500 fill-amber-500' : 'text-slate-400 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400'}`} /></div><div className="col-span-5 flex items-center gap-3"><div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{backgroundColor: `${asset.color}20`, color: asset.color}}>{asset.symbol[0]}</div><div><p className="font-bold text-slate-900 dark:text-white text-sm">{asset.symbol}</p><p className="text-xs text-slate-500 truncate hidden sm:block">{asset.name}</p></div></div><div className="col-span-3 text-right font-medium text-sm text-slate-900 dark:text-white">${asset.price.toLocaleString()}</div><div className="col-span-3 flex justify-end"><Badge value={asset.change24h} /></div></div>); })}
+                {assets.map(asset => { const isWatched = watchlist.includes(asset.id); return (<div key={asset.id} onClick={() => onViewAsset(asset)} className="grid grid-cols-12 items-center p-4 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-white/5 active:scale-[0.99] group"><div className="col-span-1" onClick={(e) => { e.stopPropagation(); toggleWatchlist(asset.id); }}><Star className={`w-4 h-4 transition-colors ${isWatched ? 'text-amber-500 fill-amber-500' : 'text-slate-400 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400'}`} /></div><div className="col-span-5 flex items-center gap-3"><div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{backgroundColor: `${asset.color}20`, color: asset.color}}>{asset.symbol[0]}</div><div><p className="font-bold text-slate-900 dark:text-white text-sm">{asset.symbol}</p><p className="text-xs text-slate-500 truncate hidden sm:block">{asset.name}</p></div></div><div className="col-span-3 text-right font-medium text-sm text-slate-900 dark:text-white">{formatPrice(asset.price)}</div><div className="col-span-3 flex justify-end"><Badge value={asset.change24h} /></div></div>); })}
             </div>
         </div>
     );
@@ -211,6 +287,7 @@ export const MainApp: React.FC<{
   const [activeTab, setActiveTab] = useState<DashboardTab>(DashboardTab.HOME);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [currency, setCurrency] = useState<CurrencyCode>('USD');
   
   // Watchlist State with persistence
   const [watchlist, setWatchlist] = useState<string[]>(() => {
@@ -221,6 +298,8 @@ export const MainApp: React.FC<{
       return ['1', '2'];
     }
   });
+
+  const currencyData = CURRENCIES[currency];
 
   useEffect(() => {
     setAssets(getAssets());
@@ -248,6 +327,8 @@ export const MainApp: React.FC<{
           isWatched={watchlist.includes(selectedAsset.id)}
           onToggleWatch={() => toggleWatchlist(selectedAsset.id)}
           onBack={() => setSelectedAsset(null)} 
+          currency={{ symbol: currencyData.symbol, code: currency }}
+          rate={currencyData.rate}
         />
       );
     }
@@ -259,11 +340,29 @@ export const MainApp: React.FC<{
 
     switch (activeTab) {
       case DashboardTab.HOME:
-        return <DashboardHome assets={assets} watchlist={watchlist} onViewAsset={handleAssetClick} onStartTrading={() => setActiveTab(DashboardTab.TRADE)} />;
+        return (
+          <DashboardHome 
+            assets={assets} 
+            watchlist={watchlist} 
+            onViewAsset={handleAssetClick} 
+            onStartTrading={() => setActiveTab(DashboardTab.TRADE)} 
+            currency={{ symbol: currencyData.symbol, code: currency }}
+            rate={currencyData.rate}
+          />
+        );
       case DashboardTab.MARKET:
-        return <MarketList assets={assets} watchlist={watchlist} toggleWatchlist={toggleWatchlist} onViewAsset={handleAssetClick} />;
+        return (
+          <MarketList 
+            assets={assets} 
+            watchlist={watchlist} 
+            toggleWatchlist={toggleWatchlist} 
+            onViewAsset={handleAssetClick} 
+            currency={{ symbol: currencyData.symbol, code: currency }}
+            rate={currencyData.rate}
+          />
+        );
       case DashboardTab.WALLET:
-        return <WalletDashboard />;
+        return <WalletDashboard currency={currencyData.symbol} rate={currencyData.rate} />;
       case DashboardTab.PROFILE:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6 animate-in fade-in">
@@ -279,7 +378,16 @@ export const MainApp: React.FC<{
           </div>
         );
       default:
-        return <DashboardHome assets={assets} watchlist={watchlist} onViewAsset={handleAssetClick} onStartTrading={() => setActiveTab(DashboardTab.TRADE)} />;
+        return (
+          <DashboardHome 
+            assets={assets} 
+            watchlist={watchlist} 
+            onViewAsset={handleAssetClick} 
+            onStartTrading={() => setActiveTab(DashboardTab.TRADE)} 
+            currency={{ symbol: currencyData.symbol, code: currency }}
+            rate={currencyData.rate}
+          />
+        );
     }
   };
 
@@ -308,6 +416,7 @@ export const MainApp: React.FC<{
             </div>
         </button>
         <div className="flex gap-3 items-center">
+             <CurrencySelector current={currency} onChange={setCurrency} />
              <LanguageSelector current={lang} onChange={setLang} />
              <ThemeToggle isDark={isDark} toggle={toggleTheme} />
              <button className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/5 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">

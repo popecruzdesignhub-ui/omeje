@@ -82,7 +82,20 @@ const NetworkSelector = ({ networks, selected, onSelect }: { networks: string[],
     </div>
 );
 
-const WalletOverview = ({ assets, onNavigate }: { assets: Asset[], onNavigate: (view: string) => void }) => {
+const WalletOverview = ({ 
+    assets, 
+    onNavigate, 
+    currency, 
+    rate 
+}: { 
+    assets: Asset[], 
+    onNavigate: (view: string) => void,
+    currency: string,
+    rate: number
+}) => {
+    const totalBalance = 42850.25 * rate;
+    const formatPrice = (p: number) => (p * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
              {/* Total Balance Card */}
@@ -90,7 +103,7 @@ const WalletOverview = ({ assets, onNavigate }: { assets: Asset[], onNavigate: (
                 <div className="absolute top-0 right-0 p-12 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none" />
                 <div className="relative z-10 text-center py-6">
                     <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Total Estimated Value</p>
-                    <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">$42,850.25</h1>
+                    <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">{currency}{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h1>
                     <p className="text-sm text-slate-500">≈ 0.6542 BTC</p>
                 
                     <div className="flex gap-4 mt-8 justify-center">
@@ -139,7 +152,7 @@ const WalletOverview = ({ assets, onNavigate }: { assets: Asset[], onNavigate: (
                             </div>
                             <div className="text-right">
                                 <p className="font-medium text-slate-900 dark:text-white">{(asset.price / 1000).toFixed(4)}</p>
-                                <p className="text-xs text-slate-500">${(asset.price * (asset.price/1000)).toLocaleString()}</p>
+                                <p className="text-xs text-slate-500">{currency}{(asset.price * (asset.price/1000) * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                         </div>
                     ))}
@@ -493,13 +506,13 @@ const TransactionHistoryView = ({ onBack }: { onBack: () => void }) => {
     )
 }
 
-export const WalletDashboard: React.FC = () => {
+export const WalletDashboard: React.FC<{ currency?: string; rate?: number }> = ({ currency = '$', rate = 1 }) => {
     const [view, setView] = useState<'overview' | 'deposit' | 'withdraw' | 'history' | 'transfer'>('overview');
     const assets = getAssets();
 
     return (
         <div className="pb-24">
-            {view === 'overview' && <WalletOverview assets={assets} onNavigate={(v: any) => setView(v)} />}
+            {view === 'overview' && <WalletOverview assets={assets} onNavigate={(v: any) => setView(v)} currency={currency} rate={rate} />}
             {view === 'deposit' && <DepositView assets={assets} onBack={() => setView('overview')} />}
             {view === 'withdraw' && <WithdrawView assets={assets} onBack={() => setView('overview')} />}
             {view === 'history' && <TransactionHistoryView onBack={() => setView('overview')} />}

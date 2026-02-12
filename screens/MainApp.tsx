@@ -3,15 +3,16 @@ import {
   LayoutDashboard, LineChart, Wallet, User, Bell, Search, 
   ArrowUpRight, ArrowDownLeft, SlidersHorizontal, ChevronRight,
   RefreshCcw, Sparkles, X, ArrowRightLeft, Star, Download,
-  ChevronDown, ChevronUp, LogOut
+  ChevronDown, ChevronUp, LogOut, Eye, EyeOff
 } from 'lucide-react';
-import { GlassCard, Button, Badge, Modal, ThemeToggle } from '../components/UI';
+import { GlassCard, Button, Badge, Modal, ThemeToggle, LanguageSelector } from '../components/UI';
 import { SimpleAreaChart, Sparkline } from '../components/Charts';
 import { Asset, DashboardTab, AppScreen } from '../types';
 import { getAssets, getTransactions } from '../services/dataService';
 import { getMarketInsight } from '../services/geminiService';
 import { TradingDashboard } from './TradingDashboard';
 import { WalletDashboard } from './WalletScreens';
+import { Language } from '../services/translations';
 
 // --- Dashboard Component ---
 const DashboardHome = ({ 
@@ -26,6 +27,7 @@ const DashboardHome = ({
   onStartTrading: () => void
 }) => {
   const watchedAssets = assets.filter(a => watchlist.includes(a.id));
+  const [showBalance, setShowBalance] = useState(true);
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-24">
@@ -35,8 +37,18 @@ const DashboardHome = ({
         <div className="relative z-10">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Balance</p>
-              <h1 className="text-4xl font-bold text-slate-900 dark:text-white mt-1 tracking-tight">$42,850.25</h1>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Balance</p>
+                <button 
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+              </div>
+              <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+                {showBalance ? "$42,850.25" : "••••••••"}
+              </h1>
             </div>
             <Badge value={12.5} />
           </div>
@@ -146,7 +158,24 @@ const AssetDetail = ({ asset, isWatched, onToggleWatch, onBack }: { asset: Asset
         </div>
       </div>
       <div className="px-1">
-        <div className="mb-8"><p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Current Price</p><div className="flex items-baseline gap-3 mb-2"><h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">${asset.price.toLocaleString()}</h1><Badge value={asset.change24h} /></div></div>
+        <div className="mb-8">
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Current Price</p>
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-4">${asset.price.toLocaleString()}</h1>
+            <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex flex-col items-center justify-center gap-1">
+                     <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">24h</span>
+                     <Badge value={asset.change24h} />
+                </div>
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex flex-col items-center justify-center gap-1">
+                     <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">7d</span>
+                     <Badge value={asset.change7d || ((Math.random() * 20) - 5)} />
+                </div>
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex flex-col items-center justify-center gap-1">
+                     <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">30d</span>
+                     <Badge value={asset.change30d || ((Math.random() * 30) - 10)} />
+                </div>
+            </div>
+        </div>
         <div className="h-64 w-full -mx-2 mb-8"><SimpleAreaChart data={asset.history} color={asset.color} height={250} /></div>
         <div className="flex justify-between bg-slate-200 dark:bg-white/5 p-1 rounded-xl mb-8">{['1H', '1D', '1W', '1M', '1Y'].map((tf) => (<button key={tf} onClick={() => setTimeframe(tf)} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${timeframe === tf ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>{tf}</button>))}</div>
         {loadingInsight && (<GlassCard className="mb-6 animate-pulse border-indigo-500/20 bg-indigo-500/5"><div className="flex items-center gap-2 mb-3"><div className="w-4 h-4 bg-indigo-500/20 rounded"></div><div className="h-4 w-32 bg-indigo-500/20 rounded"></div></div><div className="space-y-2"><div className="h-3 w-full bg-indigo-500/10 rounded"></div><div className="h-3 w-5/6 bg-indigo-500/10 rounded"></div><div className="h-3 w-4/6 bg-indigo-500/10 rounded"></div></div></GlassCard>)}
@@ -176,7 +205,9 @@ export const MainApp: React.FC<{
     setScreen: (screen: AppScreen) => void;
     isDark: boolean;
     toggleTheme: () => void;
-}> = ({ setScreen, isDark, toggleTheme }) => {
+    lang: Language;
+    setLang: (l: Language) => void;
+}> = ({ setScreen, isDark, toggleTheme, lang, setLang }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>(DashboardTab.HOME);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -239,7 +270,8 @@ export const MainApp: React.FC<{
              <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-white/5 flex items-center justify-center mb-6">
                 <User className="w-10 h-10 text-slate-500 dark:text-slate-600" />
              </div>
-             <h3 className="text-xl font-bold text-slate-900 dark:text-white">Profile</h3>
+             <h3 className="text-xl font-bold text-slate-900 dark:text-white">John Doe</h3>
+             <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto mb-4">john.doe@example.com</p>
              <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">Manage your personal information and settings.</p>
              <Button className="mt-6 w-auto" variant="secondary" onClick={() => setScreen(AppScreen.SIGN_IN)}>
                 Log Out
@@ -263,7 +295,10 @@ export const MainApp: React.FC<{
     <div className="min-h-screen bg-gray-50 dark:bg-[#020617] text-slate-900 dark:text-white transition-colors duration-300">
       {/* Top Bar - Only show if not in Trade view (Trade view has its own header) */}
       <div className="sticky top-0 z-30 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 px-6 py-4 flex justify-between items-center transition-colors">
-        <div className="flex items-center gap-3">
+        <button 
+          onClick={() => setActiveTab(DashboardTab.PROFILE)}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+        >
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-black font-bold text-sm shadow-lg shadow-orange-500/20">
                 JD
             </div>
@@ -271,8 +306,9 @@ export const MainApp: React.FC<{
               <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Welcome back</p>
               <span className="font-bold text-sm text-slate-900 dark:text-white">John Doe</span>
             </div>
-        </div>
+        </button>
         <div className="flex gap-3 items-center">
+             <LanguageSelector current={lang} onChange={setLang} />
              <ThemeToggle isDark={isDark} toggle={toggleTheme} />
              <button className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/5 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
                 <Search className="w-5 h-5" />
@@ -282,11 +318,11 @@ export const MainApp: React.FC<{
                 <span className="absolute top-2 right-2.5 w-2 h-2 bg-amber-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.5)]"></span>
              </button>
              <button 
-                onClick={() => setScreen(AppScreen.SIGN_IN)}
+                onClick={() => setActiveTab(DashboardTab.PROFILE)}
                 className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/5 transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                title="Log Out"
+                title="Profile"
              >
-                <LogOut className="w-5 h-5" />
+                <User className="w-5 h-5" />
              </button>
         </div>
       </div>

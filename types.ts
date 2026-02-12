@@ -4,6 +4,8 @@ export interface Asset {
   name: string;
   price: number;
   change24h: number;
+  change7d?: number;
+  change30d?: number;
   volume: string;
   marketCap: string;
   color: string;

@@ -40,9 +40,14 @@ export const generateHistory = (basePrice: number, points: number = 24): ChartDa
 export const getAssets = (): Asset[] => {
   return BASE_ASSETS.map(asset => {
     const change24h = (Math.random() * 10) - 4; // Random between -4% and +6%
+    const change7d = (Math.random() * 20) - 8;  // Random between -8% and +12%
+    const change30d = (Math.random() * 40) - 15; // Random between -15% and +25%
+    
     return {
       ...asset,
       change24h,
+      change7d,
+      change30d,
       volume: (Math.random() * 10 + 1).toFixed(1) + 'B',
       marketCap: (Math.random() * 500 + 10).toFixed(1) + 'B',
       history: generateHistory(asset.price, 50).map(p => ({ time: p.time, value: p.value }))

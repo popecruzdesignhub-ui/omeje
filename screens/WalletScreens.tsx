@@ -3,7 +3,7 @@ import {
   ArrowDownLeft, ArrowUpRight, History, 
   Copy, Check, ChevronDown, QrCode,
   AlertCircle, ChevronLeft,
-  Share2, FileText
+  Share2, FileText, ArrowRightLeft
 } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/UI';
 import { Asset } from '../types';
@@ -94,6 +94,12 @@ const WalletOverview = ({ assets, onNavigate }: { assets: Asset[], onNavigate: (
                     <p className="text-sm text-slate-500">≈ 0.6542 BTC</p>
                 
                     <div className="flex gap-4 mt-8 justify-center">
+                        <button onClick={() => onNavigate('transfer')} className="flex flex-col items-center gap-2 group">
+                            <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform border border-blue-500/20">
+                                <ArrowRightLeft className="w-6 h-6" />
+                            </div>
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-300">Transfer</span>
+                        </button>
                         <button onClick={() => onNavigate('deposit')} className="flex flex-col items-center gap-2 group">
                             <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform border border-emerald-500/20">
                                 <ArrowDownLeft className="w-6 h-6" />
@@ -263,6 +269,81 @@ const DepositView = ({ assets, onBack }: { assets: Asset[], onBack: () => void }
     );
 };
 
+const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void }) => {
+    const [selectedId, setSelectedId] = useState(assets[0].id);
+    const [amount, setAmount] = useState('');
+    const [recipientId, setRecipientId] = useState('');
+    const [loading, setLoading] = useState(false);
+    
+    const asset = assets.find(a => a.id === selectedId) || assets[0];
+
+    const handleTransfer = () => {
+        if(!amount || parseFloat(amount) <= 0) {
+            alert("Please enter a valid amount.");
+            return;
+        }
+        if(!recipientId) {
+            alert("Please enter a recipient User ID/Email.");
+            return;
+        }
+
+        setLoading(true);
+        console.log(`[BACKEND] Initiating Internal Transfer...`);
+        
+        setTimeout(() => {
+            setLoading(false);
+            console.log(`Transfer Successful: ${amount} ${asset.symbol} sent to ${recipientId}`);
+            alert(`Transfer of ${amount} ${asset.symbol} to ${recipientId} successful.`);
+            onBack();
+        }, 1500);
+    };
+
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+             <div className="flex items-center gap-3 mb-6">
+                <button onClick={onBack} className="p-2 rounded-full bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">
+                    <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-white" />
+                </button>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Internal Transfer</h2>
+            </div>
+
+            <GlassCard className="space-y-6">
+                <AssetSelector assets={assets} selectedId={selectedId} onSelect={setSelectedId} />
+                
+                <Input 
+                    label="Recipient User ID / Email" 
+                    placeholder="Enter user email or ID" 
+                    value={recipientId}
+                    onChange={(e) => setRecipientId(e.target.value)}
+                />
+
+                <div className="space-y-2">
+                     <label className="text-sm text-slate-500 dark:text-slate-400">Amount</label>
+                     <div className="relative">
+                        <Input 
+                            placeholder="0.00" 
+                            type="number"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                        />
+                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-500 hover:text-amber-400">MAX</button>
+                     </div>
+                     <div className="flex justify-between text-xs text-slate-500 px-1">
+                        <span>Available: 1.2454 {asset.symbol}</span>
+                     </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3">
+                    <AlertCircle className="w-5 h-5 text-blue-500 shrink-0" />
+                    <p className="text-xs text-blue-600 dark:text-blue-300">Internal transfers are instant and free of charge.</p>
+                </div>
+
+                <Button variant="primary" onClick={handleTransfer} isLoading={loading}>Confirm Transfer</Button>
+            </GlassCard>
+        </div>
+    );
+};
+
 const WithdrawView = ({ assets, onBack }: { assets: Asset[], onBack: () => void }) => {
     const [selectedId, setSelectedId] = useState(assets[0].id);
     const [network, setNetwork] = useState('ERC20');
@@ -413,7 +494,7 @@ const TransactionHistoryView = ({ onBack }: { onBack: () => void }) => {
 }
 
 export const WalletDashboard: React.FC = () => {
-    const [view, setView] = useState<'overview' | 'deposit' | 'withdraw' | 'history'>('overview');
+    const [view, setView] = useState<'overview' | 'deposit' | 'withdraw' | 'history' | 'transfer'>('overview');
     const assets = getAssets();
 
     return (
@@ -422,6 +503,7 @@ export const WalletDashboard: React.FC = () => {
             {view === 'deposit' && <DepositView assets={assets} onBack={() => setView('overview')} />}
             {view === 'withdraw' && <WithdrawView assets={assets} onBack={() => setView('overview')} />}
             {view === 'history' && <TransactionHistoryView onBack={() => setView('overview')} />}
+            {view === 'transfer' && <TransferView assets={assets} onBack={() => setView('overview')} />}
         </div>
     );
 };

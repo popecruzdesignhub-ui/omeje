@@ -17,14 +17,14 @@ const AssetSelector = ({ assets, selectedId, onSelect }: { assets: Asset[], sele
 
     return (
         <div className="relative z-20">
-            <label className="text-sm text-slate-400 mb-1 block">Select Asset</label>
+            <label className="text-sm text-slate-500 dark:text-slate-400 mb-1 block">Select Asset</label>
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 flex items-center justify-between text-white hover:bg-white/5 transition-colors"
+                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center justify-between text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
             >
                 <div className="flex items-center gap-3">
                     {selected.iconUrl ? (
-                         <img src={selected.iconUrl} alt={selected.symbol} className="w-8 h-8 rounded-full bg-white/5" />
+                         <img src={selected.iconUrl} alt={selected.symbol} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/5" />
                     ) : (
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{backgroundColor: `${selected.color}20`, color: selected.color}}>
                             {selected.symbol[0]}
@@ -39,22 +39,22 @@ const AssetSelector = ({ assets, selectedId, onSelect }: { assets: Asset[], sele
             </button>
             
             {isOpen && (
-                <div className="absolute top-full left-0 w-full mt-2 bg-[#0B0E14] border border-white/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-[#0B0E14] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
                     {assets.map(asset => (
                         <button 
                             key={asset.id}
                             onClick={() => { onSelect(asset.id); setIsOpen(false); }}
-                            className="w-full p-3 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
+                            className="w-full p-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left"
                         >
                              {asset.iconUrl ? (
-                                <img src={asset.iconUrl} alt={asset.symbol} className="w-8 h-8 rounded-full bg-white/5" />
+                                <img src={asset.iconUrl} alt={asset.symbol} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/5" />
                             ) : (
                                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{backgroundColor: `${asset.color}20`, color: asset.color}}>
                                     {asset.symbol[0]}
                                 </div>
                             )}
                             <div>
-                                <p className="font-bold text-sm text-white">{asset.symbol}</p>
+                                <p className="font-bold text-sm text-slate-900 dark:text-white">{asset.symbol}</p>
                                 <p className="text-xs text-slate-500">{asset.name}</p>
                             </div>
                         </button>
@@ -67,13 +67,13 @@ const AssetSelector = ({ assets, selectedId, onSelect }: { assets: Asset[], sele
 
 const NetworkSelector = ({ networks, selected, onSelect }: { networks: string[], selected: string, onSelect: (n: string) => void }) => (
     <div className="space-y-2">
-        <label className="text-sm text-slate-400">Select Network</label>
+        <label className="text-sm text-slate-500 dark:text-slate-400">Select Network</label>
         <div className="grid grid-cols-2 gap-2">
             {networks.map(net => (
                 <button 
                     key={net}
                     onClick={() => onSelect(net)}
-                    className={`p-3 rounded-xl border text-sm font-medium transition-all ${selected === net ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' : 'bg-transparent border-white/10 text-slate-400 hover:border-white/20'}`}
+                    className={`p-3 rounded-xl border text-sm font-medium transition-all ${selected === net ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20'}`}
                 >
                     {net}
                 </button>
@@ -89,8 +89,8 @@ const WalletOverview = ({ assets, onNavigate }: { assets: Asset[], onNavigate: (
             <GlassCard className="relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-12 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none" />
                 <div className="relative z-10 text-center py-6">
-                    <p className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Total Estimated Value</p>
-                    <h1 className="text-4xl font-bold text-white tracking-tight mb-2">$42,850.25</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Total Estimated Value</p>
+                    <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">$42,850.25</h1>
                     <p className="text-sm text-slate-500">≈ 0.6542 BTC</p>
                 
                     <div className="flex gap-4 mt-8 justify-center">
@@ -98,19 +98,19 @@ const WalletOverview = ({ assets, onNavigate }: { assets: Asset[], onNavigate: (
                             <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform border border-emerald-500/20">
                                 <ArrowDownLeft className="w-6 h-6" />
                             </div>
-                            <span className="text-xs font-medium text-slate-300">Deposit</span>
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-300">Deposit</span>
                         </button>
                         <button onClick={() => onNavigate('withdraw')} className="flex flex-col items-center gap-2 group">
-                            <div className="w-12 h-12 rounded-full bg-white/5 text-white flex items-center justify-center group-hover:scale-110 transition-transform border border-white/10">
+                            <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-white/5 text-slate-600 dark:text-white flex items-center justify-center group-hover:scale-110 transition-transform border border-slate-300 dark:border-white/10">
                                 <ArrowUpRight className="w-6 h-6" />
                             </div>
-                            <span className="text-xs font-medium text-slate-300">Withdraw</span>
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-300">Withdraw</span>
                         </button>
                         <button onClick={() => onNavigate('history')} className="flex flex-col items-center gap-2 group">
-                            <div className="w-12 h-12 rounded-full bg-white/5 text-white flex items-center justify-center group-hover:scale-110 transition-transform border border-white/10">
+                            <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-white/5 text-slate-600 dark:text-white flex items-center justify-center group-hover:scale-110 transition-transform border border-slate-300 dark:border-white/10">
                                 <History className="w-6 h-6" />
                             </div>
-                            <span className="text-xs font-medium text-slate-300">History</span>
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-300">History</span>
                         </button>
                     </div>
                 </div>
@@ -118,21 +118,21 @@ const WalletOverview = ({ assets, onNavigate }: { assets: Asset[], onNavigate: (
 
             {/* Asset List */}
             <div>
-                <h3 className="text-lg font-bold text-white mb-4 px-1">Spot Assets</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 px-1">Spot Assets</h3>
                 <div className="space-y-3">
                     {assets.map(asset => (
-                        <div key={asset.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] transition-colors group">
+                        <div key={asset.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-slate-200 dark:border-white/[0.05] hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors group">
                             <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg`} style={{ backgroundColor: `${asset.color}20`, color: asset.color }}>
                                     {asset.symbol[0]}
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-white">{asset.symbol}</h4>
+                                    <h4 className="font-bold text-slate-900 dark:text-white">{asset.symbol}</h4>
                                     <p className="text-xs text-slate-500">{asset.name}</p>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="font-medium text-white">{(asset.price / 1000).toFixed(4)}</p>
+                                <p className="font-medium text-slate-900 dark:text-white">{(asset.price / 1000).toFixed(4)}</p>
                                 <p className="text-xs text-slate-500">${(asset.price * (asset.price/1000)).toLocaleString()}</p>
                             </div>
                         </div>
@@ -180,10 +180,10 @@ const DepositView = ({ assets, onBack }: { assets: Asset[], onBack: () => void }
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
              <div className="flex items-center gap-3 mb-6">
-                <button onClick={onBack} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                    <ChevronLeft className="w-5 h-5" />
+                <button onClick={onBack} className="p-2 rounded-full bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">
+                    <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-white" />
                 </button>
-                <h2 className="text-xl font-bold">Deposit {asset.symbol}</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Deposit {asset.symbol}</h2>
             </div>
 
             <GlassCard className="space-y-6">
@@ -195,12 +195,12 @@ const DepositView = ({ assets, onBack }: { assets: Asset[], onBack: () => void }
                 />
 
                 {!address ? (
-                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-4 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-                        <div className="p-4 rounded-full bg-slate-800">
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-4 border border-dashed border-slate-300 dark:border-white/10 rounded-2xl bg-white/[0.02]">
+                        <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
                             <QrCode className="w-8 h-8 text-slate-500" />
                         </div>
                         <div className="space-y-1">
-                            <h3 className="text-white font-medium">No Address Generated</h3>
+                            <h3 className="text-slate-900 dark:text-white font-medium">No Address Generated</h3>
                             <p className="text-xs text-slate-500 max-w-[250px] mx-auto">
                                 Generate a unique deposit address for {asset.symbol} on the {network} network.
                             </p>
@@ -215,11 +215,9 @@ const DepositView = ({ assets, onBack }: { assets: Asset[], onBack: () => void }
                     </div>
                 ) : (
                     <div className="animate-in fade-in zoom-in duration-300 space-y-6">
-                        <div className="p-6 bg-white text-black rounded-2xl flex flex-col items-center justify-center space-y-4">
+                        <div className="p-6 bg-white text-black rounded-2xl flex flex-col items-center justify-center space-y-4 border border-slate-200">
                             <div className="w-48 h-48 bg-slate-100 rounded-xl flex items-center justify-center border-2 border-slate-200 relative">
                                 <QrCode className="w-32 h-32 text-slate-900" />
-                                <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                                </div>
                             </div>
                             <p className="text-xs font-medium text-slate-500 text-center max-w-[200px]">
                                 Scan to deposit {asset.symbol} via {network}
@@ -227,23 +225,23 @@ const DepositView = ({ assets, onBack }: { assets: Asset[], onBack: () => void }
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm text-slate-400">Wallet Address</label>
+                            <label className="text-sm text-slate-500 dark:text-slate-400">Wallet Address</label>
                             <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-900/50 border border-white/10 rounded-xl p-3.5 text-sm font-mono text-slate-300 truncate">
+                                <div className="flex-1 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-3.5 text-sm font-mono text-slate-700 dark:text-slate-300 truncate">
                                     {address}
                                 </div>
                                 <button 
                                     onClick={handleCopy}
-                                    className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white transition-colors"
+                                    className="p-3.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors"
                                 >
-                                    {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+                                    {copied ? <Check className="w-5 h-5 text-emerald-500 dark:text-emerald-400" /> : <Copy className="w-5 h-5 text-slate-500 dark:text-slate-400" />}
                                 </button>
                             </div>
                         </div>
 
                         <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                             <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                            <div className="text-xs text-amber-200/80 leading-relaxed">
+                            <div className="text-xs text-amber-700 dark:text-amber-200/80 leading-relaxed">
                                 Send only <strong>{asset.symbol}</strong> to this address. Sending any other coins may result in permanent loss.
                             </div>
                         </div>
@@ -311,10 +309,10 @@ const WithdrawView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
     return (
         <div className="space-y-6 animate-in slide-in-from-right duration-300">
              <div className="flex items-center gap-3 mb-6">
-                <button onClick={onBack} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                    <ChevronLeft className="w-5 h-5" />
+                <button onClick={onBack} className="p-2 rounded-full bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">
+                    <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-white" />
                 </button>
-                <h2 className="text-xl font-bold">Withdraw {asset.symbol}</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Withdraw {asset.symbol}</h2>
             </div>
 
             <GlassCard className="space-y-6">
@@ -335,7 +333,7 @@ const WithdrawView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
                 />
 
                 <div className="space-y-2">
-                     <label className="text-sm text-slate-400">Amount</label>
+                     <label className="text-sm text-slate-500 dark:text-slate-400">Amount</label>
                      <div className="relative">
                         <Input 
                             placeholder="Min 0.001" 
@@ -351,14 +349,14 @@ const WithdrawView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
                      </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-white/5 space-y-3">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 space-y-3">
                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Network Fee</span>
-                        <span className="text-white">{fee} {asset.symbol}</span>
+                        <span className="text-slate-500 dark:text-slate-400">Network Fee</span>
+                        <span className="text-slate-900 dark:text-white">{fee} {asset.symbol}</span>
                     </div>
                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Receive Amount</span>
-                        <span className="text-xl font-bold text-white">
+                        <span className="text-slate-500 dark:text-slate-400">Receive Amount</span>
+                        <span className="text-xl font-bold text-slate-900 dark:text-white">
                             {amount ? (parseFloat(amount) - fee).toFixed(4) : '0.0000'} <span className="text-sm font-normal text-slate-500">{asset.symbol}</span>
                         </span>
                     </div>
@@ -375,15 +373,15 @@ const TransactionHistoryView = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="space-y-4 animate-in slide-in-from-right duration-300">
             <div className="flex items-center gap-3 mb-4">
-                <button onClick={onBack} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                    <ChevronLeft className="w-5 h-5" />
+                <button onClick={onBack} className="p-2 rounded-full bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">
+                    <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-white" />
                 </button>
-                <h2 className="text-xl font-bold">Transaction History</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Transaction History</h2>
             </div>
             
             <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
                 {['All', 'Deposit', 'Withdraw', 'Buy', 'Sell'].map(filter => (
-                    <button key={filter} className="px-4 py-2 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 text-sm font-medium whitespace-nowrap">
+                    <button key={filter} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-white/5 border border-slate-300 dark:border-white/5 hover:bg-slate-300 dark:hover:bg-white/10 text-sm font-medium whitespace-nowrap text-slate-700 dark:text-slate-300">
                         {filter}
                     </button>
                 ))}
@@ -397,15 +395,15 @@ const TransactionHistoryView = ({ onBack }: { onBack: () => void }) => {
                                 {t.type === 'deposit' || t.type === 'buy' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                              </div>
                              <div>
-                                 <p className="font-bold text-white capitalize">{t.type} {t.assetSymbol || 'USD'}</p>
+                                 <p className="font-bold text-slate-900 dark:text-white capitalize">{t.type} {t.assetSymbol || 'USD'}</p>
                                  <p className="text-xs text-slate-500">{t.date}</p>
                              </div>
                          </div>
                          <div className="text-right">
-                             <p className={`font-bold ${t.type === 'deposit' || t.type === 'buy' ? 'text-emerald-400' : 'text-white'}`}>
+                             <p className={`font-bold ${t.type === 'deposit' || t.type === 'buy' ? 'text-emerald-500' : 'text-slate-900 dark:text-white'}`}>
                                 {t.type === 'deposit' || t.type === 'buy' ? '+' : '-'}{t.amount} {t.assetSymbol || 'USD'}
                              </p>
-                             <p className="text-[10px] uppercase font-bold tracking-wider text-slate-600">{t.status}</p>
+                             <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">{t.status}</p>
                          </div>
                     </GlassCard>
                 ))}

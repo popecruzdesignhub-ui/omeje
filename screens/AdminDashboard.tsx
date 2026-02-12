@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   ShieldAlert, Users, Activity, Settings, LogOut, 
   Search, Bell, AlertTriangle, CheckCircle2, XCircle,
   MoreVertical, Server, Database, FileText, DollarSign,
   Lock, TrendingUp, Menu, ChevronRight, Wallet, CreditCard,
-  Ban, Check, RefreshCcw, Eye, Trash2, Unlock, Clock
+  Ban, Check, RefreshCcw, Eye, Trash2, Unlock, Clock,
+  Filter, ExternalLink, Calendar
 } from 'lucide-react';
 import { GlassCard, Button, Input, Modal, Badge, Logo, ThemeToggle, LanguageSelector } from '../components/UI';
 import { AppScreen } from '../types';
@@ -20,22 +21,24 @@ interface SecurityLog {
   ip: string;
   location: string;
   time: string;
+  timestamp: number; // For sorting
   severity: 'low' | 'medium' | 'high';
 }
 
 const SECURITY_LOGS: SecurityLog[] = [
-  { id: 1, event: 'Failed Login Attempt', ip: '192.168.1.45', location: 'Moscow, RU', time: '10 mins ago', severity: 'medium' },
-  { id: 2, event: 'Large Withdrawal Flagged', ip: '45.22.19.11', location: 'New York, US', time: '1 hour ago', severity: 'high' },
-  { id: 3, event: 'Admin Login', ip: '10.0.0.1', location: 'Internal', time: '2 hours ago', severity: 'low' },
-  { id: 4, event: 'API Key Generated', ip: '88.12.44.21', location: 'London, UK', time: '3 hours ago', severity: 'low' },
+  { id: 1, event: 'Failed Login Attempt', ip: '192.168.1.45', location: 'Moscow, RU', time: '10 mins ago', timestamp: Date.now() - 600000, severity: 'medium' },
+  { id: 2, event: 'Large Withdrawal Flagged', ip: '45.22.19.11', location: 'New York, US', time: '1 hour ago', timestamp: Date.now() - 3600000, severity: 'high' },
+  { id: 3, event: 'Admin Login', ip: '10.0.0.1', location: 'Internal', time: '2 hours ago', timestamp: Date.now() - 7200000, severity: 'low' },
+  { id: 4, event: 'API Key Generated', ip: '88.12.44.21', location: 'London, UK', time: '3 hours ago', timestamp: Date.now() - 10800000, severity: 'low' },
+  { id: 5, event: 'Suspicious IP Detected', ip: '12.34.56.78', location: 'Unknown', time: '5 hours ago', timestamp: Date.now() - 18000000, severity: 'medium' },
 ];
 
 const INITIAL_USERS = [
-    { id: 1, name: "Alice Freeman", email: "alice@example.com", balance: 12450.00, kyc: "Verified", status: "Active", risk: "Low", lastLogin: "Today, 10:42 AM" },
-    { id: 2, name: "Bob Smith", email: "bob@crypto.net", balance: 450.00, kyc: "Pending", status: "Active", risk: "Medium", lastLogin: "Yesterday" },
-    { id: 3, name: "Charlie Day", email: "charlie@trade.io", balance: 1200000.00, kyc: "Verified", status: "Locked", risk: "High", lastLogin: "2 days ago" },
-    { id: 4, name: "Diana Prince", email: "diana@themyscira.com", balance: 85000.00, kyc: "Verified", status: "Active", risk: "Low", lastLogin: "1 hour ago" },
-    { id: 5, name: "Evan Wright", email: "evan@darkweb.net", balance: 0.00, kyc: "Unverified", status: "Banned", risk: "Critical", lastLogin: "Never" },
+    { id: 1, name: "Alice Freeman", email: "alice@example.com", balance: 12450.00, kyc: "Verified", status: "Active", risk: "Low", lastLogin: "Today, 10:42 AM", lastLoginTs: Date.now() - 100000 },
+    { id: 2, name: "Bob Smith", email: "bob@crypto.net", balance: 450.00, kyc: "Pending", status: "Active", risk: "Medium", lastLogin: "Yesterday", lastLoginTs: Date.now() - 86400000 },
+    { id: 3, name: "Charlie Day", email: "charlie@trade.io", balance: 1200000.00, kyc: "Verified", status: "Locked", risk: "High", lastLogin: "2 days ago", lastLoginTs: Date.now() - 172800000 },
+    { id: 4, name: "Diana Prince", email: "diana@themyscira.com", balance: 85000.00, kyc: "Verified", status: "Active", risk: "Low", lastLogin: "1 hour ago", lastLoginTs: Date.now() - 3600000 },
+    { id: 5, name: "Evan Wright", email: "evan@darkweb.net", balance: 0.00, kyc: "Unverified", status: "Banned", risk: "Critical", lastLogin: "Never", lastLoginTs: 0 },
 ];
 
 const RECENT_ACTIVITY = [
@@ -52,8 +55,13 @@ const PENDING_KYC = [
 ];
 
 const PENDING_WITHDRAWALS = [
-  { id: 'tx_992', user: 'Alice Freeman', amount: '2.5 BTC', address: 'bc1qxy...', risk: 'Low', time: '15m ago' },
-  { id: 'tx_993', user: 'Charlie Day', amount: '50,000 USDT', address: '0x71c...', risk: 'High', time: '1h ago' },
+  { id: 'tx_992', user: 'Alice Freeman', amount: '2.5 BTC', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', risk: 'Low', time: '15m ago', network: 'Bitcoin' },
+  { id: 'tx_993', user: 'Charlie Day', amount: '50,000 USDT', address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F', risk: 'High', time: '1h ago', network: 'ERC20' },
+];
+
+const WITHDRAWAL_HISTORY = [
+  { id: 'tx_881', user: 'Bob Smith', amount: '100 USDT', address: '0x123...', status: 'Completed', time: 'Yesterday', network: 'TRC20', txHash: '0xabc...def' },
+  { id: 'tx_882', user: 'Diana Prince', amount: '0.5 ETH', address: '0xabc...', status: 'Rejected', time: '2 days ago', network: 'ERC20', txHash: '' },
 ];
 
 // --- Sub-Components ---
@@ -101,6 +109,19 @@ const UserManagement = ({ t }: { t: any }) => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [fundAmount, setFundAmount] = useState('');
   const [fundAsset, setFundAsset] = useState('USDT');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [kycFilter, setKycFilter] = useState<'All' | 'Verified' | 'Pending' | 'Unverified'>('All');
+
+  // Filter and Sort Users
+  const filteredUsers = useMemo(() => {
+    return users
+      .filter(user => {
+        const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesKyc = kycFilter === 'All' || user.kyc === kycFilter;
+        return matchesSearch && matchesKyc;
+      })
+      .sort((a, b) => b.lastLoginTs - a.lastLoginTs); // Sort by most recent login
+  }, [users, searchQuery, kycFilter]);
 
   const handleFundClick = (user: any) => {
     setSelectedUser(user);
@@ -108,10 +129,28 @@ const UserManagement = ({ t }: { t: any }) => {
   };
 
   const handleFundSubmit = () => {
+    if (!fundAmount || parseFloat(fundAmount) <= 0) {
+        alert("Please enter a valid amount.");
+        return;
+    }
+    
+    // Simulate Backend Update
     setUsers(users.map(u => u.id === selectedUser.id ? { ...u, balance: u.balance + parseFloat(fundAmount) } : u));
+    
+    // Log Transaction (Simulated Backend Log)
+    console.log("--- ADMIN FUNDING TRANSACTION LOG ---");
+    console.log(`Transaction ID: ADM_TX_${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
+    console.log(`Timestamp: ${new Date().toISOString()}`);
+    console.log(`Admin User: CURRENT_ADMIN_SESSION`);
+    console.log(`Target User: ${selectedUser.name} (ID: ${selectedUser.id})`);
+    console.log(`Asset: ${fundAsset}`);
+    console.log(`Amount: ${fundAmount}`);
+    console.log(`New Balance: ${selectedUser.balance + parseFloat(fundAmount)}`);
+    console.log("-------------------------------------");
+
     setFundingModalOpen(false);
     setFundAmount('');
-    alert(`Successfully credited ${fundAmount} ${fundAsset} to ${selectedUser.name}`);
+    alert(`Successfully credited ${fundAmount} ${fundAsset} to ${selectedUser.name}. Transaction logged.`);
   };
 
   const toggleLockUser = (userId: number) => {
@@ -132,15 +171,37 @@ const UserManagement = ({ t }: { t: any }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t.userManagement}</h2>
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-          <input 
-            type="text" 
-            placeholder={t.searchPlaceholder} 
-            className="pl-10 pr-4 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-sm w-full sm:w-80 focus:outline-none focus:border-rose-500/50 dark:text-white" 
-          />
+        
+        <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+             {/* Filter Tabs */}
+            <div className="flex p-1 bg-slate-200 dark:bg-slate-900/50 rounded-lg border border-slate-300 dark:border-white/10">
+                {(['All', 'Verified', 'Pending', 'Unverified'] as const).map(status => (
+                    <button
+                        key={status}
+                        onClick={() => setKycFilter(status)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                            kycFilter === status 
+                            ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' 
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                    >
+                        {status}
+                    </button>
+                ))}
+            </div>
+
+            <div className="relative flex-1 sm:flex-initial">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                <input 
+                    type="text" 
+                    placeholder={t.searchPlaceholder} 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-sm w-full sm:w-64 focus:outline-none focus:border-rose-500/50 dark:text-white" 
+                />
+            </div>
         </div>
       </div>
 
@@ -150,6 +211,7 @@ const UserManagement = ({ t }: { t: any }) => {
             <thead className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-white/5 uppercase text-xs tracking-wider">
               <tr>
                 <th className="p-4">{t.userIdentity}</th>
+                <th className="p-4">Last Login</th>
                 <th className="p-4">{t.walletBalance}</th>
                 <th className="p-4">{t.kycStatus}</th>
                 <th className="p-4">{t.status}</th>
@@ -158,7 +220,7 @@ const UserManagement = ({ t }: { t: any }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {users.map(user => (
+              {filteredUsers.map(user => (
                 <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
@@ -168,9 +230,11 @@ const UserManagement = ({ t }: { t: any }) => {
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors">{user.name}</p>
                         <p className="text-xs text-slate-500">{user.email}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Last: {user.lastLogin}</p>
                       </div>
                     </div>
+                  </td>
+                  <td className="p-4 text-slate-600 dark:text-slate-400 text-xs">
+                    {user.lastLogin}
                   </td>
                   <td className="p-4 font-mono text-slate-700 dark:text-white text-base">${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                   <td className="p-4">
@@ -340,61 +404,145 @@ const KYCQueue = ({ t }: { t: any }) => (
   </div>
 );
 
-const WithdrawalQueue = ({ t }: { t: any }) => (
-  <div className="space-y-6 animate-in fade-in">
-    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t.withdrawalRequests}</h2>
-    <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-xl">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-white/5">
-            <tr>
-              <th className="p-4">User</th>
-              <th className="p-4">{t.amount}</th>
-              <th className="p-4">{t.destination}</th>
-              <th className="p-4">{t.risk}</th>
-              <th className="p-4 text-right">{t.decision}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-            {PENDING_WITHDRAWALS.map(tx => (
-              <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
-                <td className="p-4 font-medium text-slate-900 dark:text-white flex flex-col">
-                    <span>{tx.user}</span>
-                    <span className="text-xs text-slate-500 font-normal">{tx.time}</span>
-                </td>
-                <td className="p-4 font-mono text-slate-900 dark:text-white text-lg">{tx.amount}</td>
-                <td className="p-4">
-                    <div className="flex items-center gap-2">
-                        <code className="bg-slate-100 dark:bg-black/30 px-2 py-1 rounded text-xs text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-white/5">{tx.address}</code>
-                        <Button variant="ghost" className="h-6 w-6 p-0"><Eye className="w-3 h-3" /></Button>
+const WithdrawalQueue = ({ t }: { t: any }) => {
+    const [tab, setTab] = useState<'pending' | 'history'>('pending');
+    const [selectedTx, setSelectedTx] = useState<any>(null);
+
+    return (
+        <div className="space-y-6 animate-in fade-in">
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t.withdrawalRequests}</h2>
+                <div className="flex p-1 bg-slate-200 dark:bg-slate-900/50 rounded-lg border border-slate-300 dark:border-white/10">
+                    <button
+                        onClick={() => setTab('pending')}
+                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${tab === 'pending' ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+                    >
+                        Pending
+                    </button>
+                    <button
+                        onClick={() => setTab('history')}
+                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${tab === 'history' ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+                    >
+                        History
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-white/5">
+                    <tr>
+                    <th className="p-4">User</th>
+                    <th className="p-4">{t.amount}</th>
+                    <th className="p-4">{t.destination}</th>
+                    <th className="p-4">{tab === 'pending' ? t.risk : t.status}</th>
+                    <th className="p-4 text-right">{t.actions}</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {(tab === 'pending' ? PENDING_WITHDRAWALS : WITHDRAWAL_HISTORY).map((tx: any) => (
+                    <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
+                        <td className="p-4 font-medium text-slate-900 dark:text-white flex flex-col">
+                            <span>{tx.user}</span>
+                            <span className="text-xs text-slate-500 font-normal">{tx.time}</span>
+                        </td>
+                        <td className="p-4 font-mono text-slate-900 dark:text-white text-lg">{tx.amount}</td>
+                        <td className="p-4">
+                            <div className="flex items-center gap-2">
+                                <code className="bg-slate-100 dark:bg-black/30 px-2 py-1 rounded text-xs text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-white/5 truncate max-w-[120px]">{tx.address}</code>
+                            </div>
+                        </td>
+                        <td className="p-4">
+                            {tab === 'pending' ? (
+                                <span className={`px-2 py-1 rounded text-xs font-bold border ${
+                                    tx.risk === 'High' ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20' : 
+                                    'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                }`}>
+                                    {tx.risk} Risk
+                                </span>
+                            ) : (
+                                 <span className={`px-2 py-1 rounded text-xs font-bold border ${
+                                    tx.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 
+                                    'bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                                }`}>
+                                    {tx.status}
+                                </span>
+                            )}
+                        </td>
+                        <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                            <Button variant="ghost" className="h-9 w-9 p-0 border border-slate-200 dark:border-white/10" onClick={() => setSelectedTx(tx)} title="View Details">
+                                <Eye className="w-4 h-4" />
+                            </Button>
+                            {tab === 'pending' && (
+                                <>
+                                    <button className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 border border-rose-500/20 hover:text-white transition-all">
+                                        <Ban className="w-4 h-4" />
+                                    </button>
+                                    <button className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 border border-emerald-500/20 hover:text-white transition-all">
+                                        <Check className="w-4 h-4" />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                        </td>
+                    </tr>
+                    ))}
+                </tbody>
+                </table>
+            </div>
+            </div>
+
+            <Modal
+                isOpen={!!selectedTx}
+                onClose={() => setSelectedTx(null)}
+                title="Withdrawal Details"
+            >
+                {selectedTx && (
+                    <div className="space-y-4">
+                        <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-3">
+                            <div className="flex justify-between">
+                                <span className="text-sm text-slate-500 dark:text-slate-400">User</span>
+                                <span className="font-medium text-slate-900 dark:text-white">{selectedTx.user}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-sm text-slate-500 dark:text-slate-400">Amount</span>
+                                <span className="font-bold text-lg text-slate-900 dark:text-white">{selectedTx.amount}</span>
+                            </div>
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500 dark:text-slate-400">Network</span>
+                                <span className="font-medium text-slate-900 dark:text-white">{selectedTx.network || 'Unknown'}</span>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-sm text-slate-500 dark:text-slate-400">Destination Address</span>
+                                <div className="p-2 bg-slate-200 dark:bg-black/30 rounded-lg text-xs font-mono break-all text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10">
+                                    {selectedTx.address}
+                                </div>
+                            </div>
+                            {selectedTx.txHash && (
+                                <div className="space-y-1">
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">Blockchain Hash</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 flex-1 bg-slate-200 dark:bg-black/30 rounded-lg text-xs font-mono break-all text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10">
+                                            {selectedTx.txHash}
+                                        </div>
+                                        <a href="#" className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20" title="View on Explorer">
+                                            <ExternalLink className="w-4 h-4" />
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                             <Button variant="secondary" onClick={() => setSelectedTx(null)}>Close</Button>
+                        </div>
                     </div>
-                </td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded text-xs font-bold border ${
-                      tx.risk === 'High' ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20' : 
-                      'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                  }`}>
-                    {tx.risk} Risk
-                  </span>
-                </td>
-                <td className="p-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 border border-rose-500/20 hover:text-white transition-all">
-                        <Ban className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 border border-emerald-500/20 hover:text-white transition-all">
-                        <Check className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-);
+                )}
+            </Modal>
+        </div>
+    );
+};
 
 const FeesConfig = ({ t }: { t: any }) => (
   <div className="max-w-2xl space-y-6 animate-in fade-in">
@@ -425,28 +573,64 @@ const FeesConfig = ({ t }: { t: any }) => (
   </div>
 );
 
-const SecurityAudit = ({ t }: { t: any }) => (
-  <div className="space-y-6 animate-in fade-in">
-    <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-      <ShieldAlert className="w-6 h-6 text-rose-500" /> {t.securityAudit}
-    </h2>
-    <div className="bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 font-mono text-xs h-[500px] overflow-y-auto custom-scrollbar">
-      {SECURITY_LOGS.map(log => (
-        <div key={log.id} className="flex gap-4 py-2 border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 px-2 rounded">
-          <span className="text-slate-500 w-24 shrink-0">{log.time}</span>
-          <span className={`w-16 shrink-0 font-bold uppercase ${
-            log.severity === 'high' ? 'text-rose-500' : 
-            log.severity === 'medium' ? 'text-amber-500' : 'text-emerald-500'
-          }`}>{log.severity}</span>
-          <span className="text-slate-900 dark:text-white flex-1">{log.event}</span>
-          <span className="text-slate-400 w-32 shrink-0">{log.ip}</span>
-          <span className="text-slate-500 w-32 shrink-0">{log.location}</span>
+const SecurityAudit = ({ t }: { t: any }) => {
+    const [severityFilter, setSeverityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
+    const filteredLogs = useMemo(() => {
+        return SECURITY_LOGS
+            .filter(log => severityFilter === 'all' || log.severity === severityFilter)
+            .sort((a, b) => sortOrder === 'newest' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp);
+    }, [severityFilter, sortOrder]);
+
+    return (
+        <div className="space-y-6 animate-in fade-in">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                <ShieldAlert className="w-6 h-6 text-rose-500" /> {t.securityAudit}
+                </h2>
+                <div className="flex gap-3">
+                    <div className="flex p-1 bg-slate-200 dark:bg-slate-900/50 rounded-lg border border-slate-300 dark:border-white/10">
+                        <button onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')} className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1">
+                            {sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}
+                        </button>
+                    </div>
+                     <div className="flex p-1 bg-slate-200 dark:bg-slate-900/50 rounded-lg border border-slate-300 dark:border-white/10">
+                        {(['all', 'low', 'medium', 'high'] as const).map(sev => (
+                            <button
+                                key={sev}
+                                onClick={() => setSeverityFilter(sev)}
+                                className={`px-3 py-1.5 text-xs font-medium capitalize rounded-md transition-all ${
+                                    severityFilter === sev 
+                                    ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' 
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                            >
+                                {sev}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 font-mono text-xs h-[500px] overflow-y-auto custom-scrollbar">
+            {filteredLogs.map(log => (
+                <div key={log.id} className="flex flex-col sm:flex-row gap-2 sm:gap-4 py-3 border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 px-2 rounded">
+                    <span className="text-slate-500 w-24 shrink-0">{log.time}</span>
+                    <span className={`w-16 shrink-0 font-bold uppercase ${
+                        log.severity === 'high' ? 'text-rose-500' : 
+                        log.severity === 'medium' ? 'text-amber-500' : 'text-emerald-500'
+                    }`}>{log.severity}</span>
+                    <span className="text-slate-900 dark:text-white flex-1 font-medium">{log.event}</span>
+                    <span className="text-slate-400 w-32 shrink-0">{log.ip}</span>
+                    <span className="text-slate-500 w-32 shrink-0">{log.location}</span>
+                </div>
+            ))}
+            <div className="text-slate-600 italic py-2 text-center">-- End of log stream --</div>
+            </div>
         </div>
-      ))}
-      <div className="text-slate-600 italic py-2">-- End of log stream --</div>
-    </div>
-  </div>
-);
+    );
+};
 
 const AdminOverview = ({ t }: { t: any }) => (
     <div className="space-y-8 animate-in fade-in">
@@ -561,12 +745,30 @@ const AdminOverview = ({ t }: { t: any }) => (
 
 export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggleTheme, lang, setLang }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const t = translations[lang];
+
+  const handleTabChange = (tab: AdminTab) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#020617] text-slate-900 dark:text-white flex transition-colors duration-300">
+      {/* Mobile Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-[#0B0E14] border-r border-slate-200 dark:border-white/5 hidden lg:flex flex-col fixed h-full z-20 transition-colors duration-300 shadow-xl dark:shadow-none">
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-[#0B0E14] border-r border-slate-200 dark:border-white/5 
+        flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:static'}
+      `}>
         <div className="p-6 border-b border-slate-100 dark:border-white/5">
           <div className="flex items-center gap-3">
              <Logo className="w-10 h-10" />
@@ -579,17 +781,17 @@ export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggle
 
         <nav className="flex-1 p-4 overflow-y-auto">
           <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase px-3 mb-2">Management</p>
-          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => setActiveTab('users')} />
-          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => setActiveTab('kyc')} badge={2} />
+          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} />
+          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => handleTabChange('users')} />
+          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => handleTabChange('kyc')} badge={2} />
           
           <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase px-3 mb-2 mt-6">Finance</p>
-          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => setActiveTab('withdrawals')} badge={3} />
-          <SidebarItem icon={CreditCard} label={t.transactions} active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
-          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => setActiveTab('fees')} />
+          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => handleTabChange('withdrawals')} badge={3} />
+          <SidebarItem icon={CreditCard} label={t.transactions} active={activeTab === 'transactions'} onClick={() => handleTabChange('transactions')} />
+          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => handleTabChange('fees')} />
           
           <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase px-3 mb-2 mt-6">System</p>
-          <SidebarItem icon={Lock} label={t.securityLogs} active={activeTab === 'security'} onClick={() => setActiveTab('security')} />
+          <SidebarItem icon={Lock} label={t.securityLogs} active={activeTab === 'security'} onClick={() => handleTabChange('security')} />
           <SidebarItem icon={Settings} label={t.settings} active={false} onClick={() => {}} />
         </nav>
 
@@ -609,14 +811,16 @@ export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggle
       </aside>
 
       {/* Main Content */}
-      <div className="lg:ml-64 flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen">
         {/* Mobile Header */}
         <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 px-6 py-4 flex justify-between items-center lg:hidden">
           <div className="flex items-center gap-3">
              <ShieldAlert className="w-6 h-6 text-rose-500" />
              <span className="font-bold">{t.adminConsole}</span>
           </div>
-          <button><Menu className="w-6 h-6 text-slate-900 dark:text-white" /></button>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <Menu className="w-6 h-6 text-slate-900 dark:text-white" />
+          </button>
         </header>
 
         {/* Desktop Header Content (Right Side) */}

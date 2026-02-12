@@ -36,7 +36,7 @@ export default function App() {
     case AppScreen.VERIFICATION:
       return <Verification setScreen={setScreen} />;
     case AppScreen.DASHBOARD:
-      return <MainApp setScreen={setScreen} />;
+      return <MainApp setScreen={setScreen} isDark={isDark} toggleTheme={toggleTheme} />;
     case AppScreen.ADMIN_DASHBOARD:
       return (
         <AdminDashboard 

@@ -3,11 +3,11 @@ import {
   ArrowDownLeft, ArrowUpRight, History, 
   Copy, Check, ChevronDown, QrCode,
   AlertCircle, ChevronLeft,
-  Share2, FileText, ArrowRightLeft
+  Share2, FileText, ArrowRightLeft, Globe, Search, Sparkles
 } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/UI';
-import { Asset } from '../types';
-import { getAssets, getTransactions } from '../services/dataService';
+import { Asset, TransferAccount } from '../types';
+import { getAssets, getTransactions, getTransferAccounts } from '../services/dataService';
 
 // --- Components ---
 
@@ -287,11 +287,31 @@ const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
     const [amount, setAmount] = useState('');
     const [recipientId, setRecipientId] = useState('');
     const [loading, setLoading] = useState(false);
+    const [transferType, setTransferType] = useState<'internal' | 'international'>('internal');
     
+    // International Search State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<TransferAccount[]>([]);
+    const [searchPerformed, setSearchPerformed] = useState(false);
+    const [selectedAccount, setSelectedAccount] = useState<TransferAccount | null>(null);
+
     // Mock user balance for the selected asset
     const availableBalance = 1.2454;
-    
     const asset = assets.find(a => a.id === selectedId) || assets[0];
+
+    const handleSearch = () => {
+        if (!searchQuery) return;
+        setLoading(true);
+        setSearchPerformed(false);
+        setSearchResults([]);
+        
+        setTimeout(() => {
+            const results = getTransferAccounts(searchQuery);
+            setSearchResults(results);
+            setSearchPerformed(true);
+            setLoading(false);
+        }, 1000);
+    };
 
     const handleTransfer = () => {
         const numAmount = parseFloat(amount);
@@ -306,35 +326,32 @@ const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
             return;
         }
 
-        if(!recipientId) {
+        if (transferType === 'internal' && !recipientId) {
             alert("Please enter a recipient User ID/Email.");
             return;
         }
 
+        if (transferType === 'international' && !selectedAccount) {
+            alert("Please select a valid destination account.");
+            return;
+        }
+
         setLoading(true);
-        console.log(`[BACKEND] Initiating Internal Transfer...`);
+        console.log(`[BACKEND] Initiating Transfer (${transferType.toUpperCase()})...`);
         
         setTimeout(() => {
             setLoading(false);
 
-            // Simulate Balance Updates
-            const newSenderBalance = availableBalance - numAmount;
-            const recipientReceived = numAmount; // No fees for internal
+            if (transferType === 'international') {
+                console.log("--- INTERNATIONAL TRANSFER RECEIPT ---");
+                console.log(`Destination: ${selectedAccount?.bankName} (${selectedAccount?.country})`);
+                console.log(`Swift/IBAN: ${selectedAccount?.swiftCode}`);
+                console.log(`Account: ${selectedAccount?.accountNumber}`);
+            }
 
-            // Log Transaction
-            console.log("--- TRANSACTION RECEIPT ---");
-            console.log(`Type: INTERNAL_TRANSFER`);
-            console.log(`Asset: ${asset.symbol}`);
-            console.log(`From: Current User (ME)`);
-            console.log(`To: ${recipientId}`);
-            console.log(`Amount: ${numAmount.toFixed(8)} ${asset.symbol}`);
-            console.log(`Sender Balance Updated: ${availableBalance.toFixed(8)} -> ${newSenderBalance.toFixed(8)}`);
-            console.log(`Recipient Balance Updated: +${recipientReceived.toFixed(8)}`);
-            console.log("---------------------------");
-
-            alert(`Transfer of ${amount} ${asset.symbol} to ${recipientId} successful.`);
+            alert(`Transfer of ${amount} ${asset.symbol} successful.`);
             onBack();
-        }, 1500);
+        }, 2000);
     };
 
     return (
@@ -343,18 +360,98 @@ const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
                 <button onClick={onBack} className="p-2 rounded-full bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">
                     <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-white" />
                 </button>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Internal Transfer</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Transfer Assets</h2>
             </div>
 
             <GlassCard className="space-y-6">
+                <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                    <button 
+                        onClick={() => setTransferType('internal')}
+                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${transferType === 'internal' ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+                    >
+                        Internal Transfer
+                    </button>
+                    <button 
+                         onClick={() => setTransferType('international')}
+                         className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${transferType === 'international' ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+                    >
+                        International Wire
+                    </button>
+                </div>
+
                 <AssetSelector assets={assets} selectedId={selectedId} onSelect={setSelectedId} />
                 
-                <Input 
-                    label="Recipient User ID / Email" 
-                    placeholder="Enter user email or ID" 
-                    value={recipientId}
-                    onChange={(e) => setRecipientId(e.target.value)}
-                />
+                {transferType === 'internal' ? (
+                    <Input 
+                        label="Recipient User ID / Email" 
+                        placeholder="Enter user email or ID" 
+                        value={recipientId}
+                        onChange={(e) => setRecipientId(e.target.value)}
+                    />
+                ) : (
+                    <div className="space-y-4">
+                        <div className="relative">
+                           <Input 
+                              label="Destination Country or Bank"
+                              placeholder="e.g., Peru, Chase Bank..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              icon={<Globe className="w-5 h-5" />}
+                           />
+                           <button 
+                             onClick={handleSearch}
+                             className="absolute right-2 top-8 p-2 bg-amber-500 rounded-lg text-white hover:bg-amber-600 transition-colors"
+                           >
+                              <Search className="w-4 h-4" />
+                           </button>
+                        </div>
+                        
+                        {/* Search Results / AI Feedback */}
+                        {searchPerformed && (
+                            <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
+                                <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-900 dark:text-white">
+                                    <Sparkles className="w-4 h-4 text-amber-500" />
+                                    AI Assistant
+                                </div>
+                                {searchResults.length > 0 ? (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-slate-500">I found {searchResults.length} verified banking channels matching your query.</p>
+                                        <div className="space-y-2">
+                                            {searchResults.map(acc => (
+                                                <div 
+                                                    key={acc.id}
+                                                    onClick={() => setSelectedAccount(acc)}
+                                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedAccount?.id === acc.id ? 'bg-amber-500/10 border-amber-500 ring-1 ring-amber-500' : 'bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 hover:border-amber-500/50'}`}
+                                                >
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-bold text-sm text-slate-900 dark:text-white">{acc.bankName}</p>
+                                                            <p className="text-xs text-slate-500">{acc.country} • {acc.currency}</p>
+                                                        </div>
+                                                        {selectedAccount?.id === acc.id && <Check className="w-4 h-4 text-amber-500" />}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-rose-500">
+                                        I could not verify any secure banking routes for "{searchQuery}". Please verify the country name or contact support for manual processing.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        
+                        {selectedAccount && (
+                             <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2 text-xs">
+                                <h4 className="font-bold text-emerald-600 dark:text-emerald-400">Selected Destination</h4>
+                                <p className="text-slate-600 dark:text-slate-300">Bank: <span className="font-mono">{selectedAccount.bankName}</span></p>
+                                <p className="text-slate-600 dark:text-slate-300">Account: <span className="font-mono">{selectedAccount.accountNumber}</span></p>
+                                <p className="text-slate-600 dark:text-slate-300">SWIFT: <span className="font-mono">{selectedAccount.swiftCode}</span></p>
+                             </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="space-y-2">
                      <label className="text-sm text-slate-500 dark:text-slate-400">Amount</label>
@@ -379,7 +476,11 @@ const TransferView = ({ assets, onBack }: { assets: Asset[], onBack: () => void 
 
                 <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3">
                     <AlertCircle className="w-5 h-5 text-blue-500 shrink-0" />
-                    <p className="text-xs text-blue-600 dark:text-blue-300">Internal transfers are instant and free of charge.</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-300">
+                        {transferType === 'internal' 
+                         ? "Internal transfers are instant and free of charge." 
+                         : "International wires may take 1-3 business days. Intermediary fees may apply."}
+                    </p>
                 </div>
 
                 <Button variant="primary" onClick={handleTransfer} isLoading={loading}>Confirm Transfer</Button>

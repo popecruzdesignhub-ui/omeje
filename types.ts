@@ -1,3 +1,4 @@
+
 export interface Asset {
   id: string;
   symbol: string;
@@ -30,6 +31,16 @@ export interface Transaction {
   amount: number;
   date: string;
   status: 'completed' | 'pending' | 'failed';
+}
+
+export interface TransferAccount {
+  id: string;
+  country: string;
+  bankName: string;
+  accountNumber: string;
+  swiftCode: string;
+  currency: string;
+  status: 'Active' | 'Inactive';
 }
 
 export enum AppScreen {

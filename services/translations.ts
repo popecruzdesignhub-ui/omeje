@@ -45,7 +45,17 @@ export const translations = {
     securityAudit: "Security Audit Logs",
     lightMode: "Light Mode",
     darkMode: "Dark Mode",
-    language: "Language"
+    language: "Language",
+    globalAccounts: "Global Accounts",
+    addBankAccount: "Add Bank Account",
+    bankName: "Bank Name",
+    accountHolder: "Account Holder",
+    accountNumber: "Account Number / IBAN",
+    swiftCode: "SWIFT / Routing",
+    country: "Country",
+    currency: "Currency",
+    editAccount: "Edit Account",
+    deleteAccount: "Delete Account"
   },
   es: {
     adminConsole: "Consola de Admin",
@@ -90,7 +100,17 @@ export const translations = {
     securityAudit: "Auditoría de Seguridad",
     lightMode: "Modo Claro",
     darkMode: "Modo Oscuro",
-    language: "Idioma"
+    language: "Idioma",
+    globalAccounts: "Cuentas Globales",
+    addBankAccount: "Agregar Cuenta",
+    bankName: "Nombre del Banco",
+    accountHolder: "Titular de Cuenta",
+    accountNumber: "Número de Cuenta / IBAN",
+    swiftCode: "SWIFT / Ruta",
+    country: "País",
+    currency: "Moneda",
+    editAccount: "Editar Cuenta",
+    deleteAccount: "Eliminar Cuenta"
   },
   fr: {
     adminConsole: "Console Admin",
@@ -135,6 +155,16 @@ export const translations = {
     securityAudit: "Audit de Sécurité",
     lightMode: "Mode Clair",
     darkMode: "Mode Sombre",
-    language: "Langue"
+    language: "Langue",
+    globalAccounts: "Comptes Globaux",
+    addBankAccount: "Ajouter Compte",
+    bankName: "Nom de la Banque",
+    accountHolder: "Titulaire",
+    accountNumber: "Numéro de Compte / IBAN",
+    swiftCode: "SWIFT / Routage",
+    country: "Pays",
+    currency: "Devise",
+    editAccount: "Modifier Compte",
+    deleteAccount: "Supprimer Compte"
   }
 };

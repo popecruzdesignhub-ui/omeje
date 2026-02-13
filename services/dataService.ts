@@ -1,4 +1,4 @@
-import { Asset, ChartDataPoint, Transaction, TransferAccount } from '../types';
+import { Asset, ChartDataPoint, Transaction } from '../types';
 
 const BASE_ASSETS = [
   { id: '1', symbol: 'BTC', name: 'Bitcoin', price: 64230.50, color: '#f59e0b', iconUrl: 'https://assets.coincap.io/assets/icons/btc@2x.png' },
@@ -61,37 +61,4 @@ export const getTransactions = (): Transaction[] => {
     { id: 't2', type: 'deposit', amount: 1000, date: '2023-10-23', status: 'completed' },
     { id: 't3', type: 'sell', assetSymbol: 'ETH', amount: 1.2, date: '2023-10-20', status: 'completed' },
   ];
-};
-
-// --- Transfer Accounts Management ---
-
-let MOCK_TRANSFER_ACCOUNTS: TransferAccount[] = [
-  { id: '1', country: 'Peru', bankName: 'Banco de Crédito del Perú (BCP)', accountNumber: '191-12345678-0-01', swiftCode: 'BCPPLIMA', currency: 'PEN', status: 'Active' },
-  { id: '2', country: 'Peru', bankName: 'Interbank', accountNumber: '200-3001234567', swiftCode: 'INTERLIM', currency: 'USD', status: 'Active' },
-  { id: '3', country: 'USA', bankName: 'Chase Bank', accountNumber: '987654321', swiftCode: 'CHASUS33', currency: 'USD', status: 'Active' },
-  { id: '4', country: 'Spain', bankName: 'Santander', accountNumber: 'ES21 0049 0000 1234 5678', swiftCode: 'BSCHESMM', currency: 'EUR', status: 'Active' },
-  { id: '5', country: 'Japan', bankName: 'Mitsubishi UFJ', accountNumber: '0001-123-4567890', swiftCode: 'BOTKJPJT', currency: 'JPY', status: 'Active' },
-];
-
-export const getTransferAccounts = (query?: string): TransferAccount[] => {
-  if (!query) return MOCK_TRANSFER_ACCOUNTS;
-  const lowerQ = query.toLowerCase();
-  return MOCK_TRANSFER_ACCOUNTS.filter(a => 
-    a.country.toLowerCase().includes(lowerQ) || 
-    a.bankName.toLowerCase().includes(lowerQ)
-  );
-};
-
-export const addTransferAccount = (account: Omit<TransferAccount, 'id'>) => {
-  const newAccount = { ...account, id: Math.random().toString(36).substr(2, 9) };
-  MOCK_TRANSFER_ACCOUNTS.push(newAccount);
-  return newAccount;
-};
-
-export const updateTransferAccount = (id: string, updates: Partial<TransferAccount>) => {
-  MOCK_TRANSFER_ACCOUNTS = MOCK_TRANSFER_ACCOUNTS.map(a => a.id === id ? { ...a, ...updates } : a);
-};
-
-export const deleteTransferAccount = (id: string) => {
-  MOCK_TRANSFER_ACCOUNTS = MOCK_TRANSFER_ACCOUNTS.filter(a => a.id !== id);
 };

@@ -5,16 +5,16 @@ import {
   MoreVertical, Server, Database, FileText, DollarSign,
   Lock, TrendingUp, Menu, ChevronRight, Wallet, CreditCard,
   Ban, Check, RefreshCcw, Eye, Trash2, Unlock, Clock,
-  Filter, ExternalLink, Calendar, Loader2, X, Plus, Globe, Edit2
+  Filter, ExternalLink, Calendar, Loader2, Landmark, Globe,
+  Plus, Edit2
 } from 'lucide-react';
 import { GlassCard, Button, Input, Modal, Badge, Logo, ThemeToggle, LanguageSelector } from '../components/UI';
-import { AppScreen, TransferAccount } from '../types';
+import { AppScreen } from '../types';
 import { translations, Language } from '../services/translations';
-import { getTransferAccounts, addTransferAccount, updateTransferAccount, deleteTransferAccount } from '../services/dataService';
 
 // --- Types & Mock Data ---
 
-type AdminTab = 'overview' | 'users' | 'kyc' | 'withdrawals' | 'transactions' | 'fees' | 'security' | 'operations';
+type AdminTab = 'overview' | 'users' | 'kyc' | 'withdrawals' | 'transactions' | 'fees' | 'security' | 'global_accounts';
 
 interface SecurityLog {
   id: number;
@@ -24,6 +24,16 @@ interface SecurityLog {
   time: string;
   timestamp: number; // For sorting
   severity: 'low' | 'medium' | 'high';
+}
+
+interface GlobalAccount {
+  id: number;
+  country: string;
+  bankName: string;
+  accountHolder: string;
+  accountNumber: string;
+  swift: string;
+  currency: string;
 }
 
 const SECURITY_LOGS: SecurityLog[] = [
@@ -65,6 +75,12 @@ const INITIAL_WITHDRAWAL_HISTORY = [
   { id: 'tx_882', user: 'Diana Prince', amount: '0.5 ETH', address: '0xabc...', status: 'Rejected', time: '2 days ago', network: 'ERC20', txHash: '' },
 ];
 
+const INITIAL_GLOBAL_ACCOUNTS: GlobalAccount[] = [
+    { id: 1, country: 'United States', bankName: 'Chase Bank', accountHolder: 'Psychology Trade LLC', accountNumber: '987654321', swift: 'CHASUS33', currency: 'USD' },
+    { id: 2, country: 'United Kingdom', bankName: 'Barclays', accountHolder: 'Psychology Trade Ltd', accountNumber: '20-45-67 88997766', swift: 'BARCGB22', currency: 'GBP' },
+    { id: 3, country: 'Germany', bankName: 'Deutsche Bank', accountHolder: 'Psychology Trade GmbH', accountNumber: 'DE45 1007 0024 0567 8901 00', swift: 'DEUTDEFF', currency: 'EUR' },
+];
+
 // --- Sub-Components ---
 
 const SidebarItem = ({ 
@@ -104,147 +120,176 @@ interface AdminProps {
   setLang: (l: Language) => void;
 }
 
-const GlobalOps = ({ t }: { t: any }) => {
-  const [accounts, setAccounts] = useState<TransferAccount[]>(getTransferAccounts());
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  
-  // Form State
-  const [formData, setFormData] = useState({
-    country: '',
-    bankName: '',
-    accountNumber: '',
-    swiftCode: '',
-    currency: '',
-    status: 'Active' as 'Active' | 'Inactive'
-  });
-
-  const refreshAccounts = () => setAccounts(getTransferAccounts());
-
-  const handleSubmit = () => {
-    if (editingId) {
-      updateTransferAccount(editingId, formData);
-    } else {
-      addTransferAccount(formData);
-    }
-    refreshAccounts();
-    setModalOpen(false);
-    resetForm();
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this account?")) {
-      deleteTransferAccount(id);
-      refreshAccounts();
-    }
-  };
-
-  const openEdit = (acc: TransferAccount) => {
-    setEditingId(acc.id);
-    setFormData({
-      country: acc.country,
-      bankName: acc.bankName,
-      accountNumber: acc.accountNumber,
-      swiftCode: acc.swiftCode,
-      currency: acc.currency,
-      status: acc.status
+const GlobalAccountsManager = ({ t }: { t: any }) => {
+    const [accounts, setAccounts] = useState<GlobalAccount[]>(INITIAL_GLOBAL_ACCOUNTS);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentId, setCurrentId] = useState<number | null>(null);
+    const [formData, setFormData] = useState({
+        country: '',
+        bankName: '',
+        accountHolder: '',
+        accountNumber: '',
+        swift: '',
+        currency: ''
     });
-    setModalOpen(true);
-  };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData({
-      country: '',
-      bankName: '',
-      accountNumber: '',
-      swiftCode: '',
-      currency: '',
-      status: 'Active'
-    });
-  };
+    const handleOpenModal = (account?: GlobalAccount) => {
+        if (account) {
+            setIsEditing(true);
+            setCurrentId(account.id);
+            setFormData({
+                country: account.country,
+                bankName: account.bankName,
+                accountHolder: account.accountHolder,
+                accountNumber: account.accountNumber,
+                swift: account.swift,
+                currency: account.currency
+            });
+        } else {
+            setIsEditing(false);
+            setCurrentId(null);
+            setFormData({
+                country: '',
+                bankName: '',
+                accountHolder: '',
+                accountNumber: '',
+                swift: '',
+                currency: ''
+            });
+        }
+        setIsModalOpen(true);
+    };
 
-  return (
-    <div className="space-y-6 animate-in fade-in">
-       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Global Banking Operations</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Manage international transfer destinations and account details</p>
-        </div>
-        <Button className="w-auto gap-2" onClick={() => { resetForm(); setModalOpen(true); }}>
-          <Plus className="w-4 h-4" /> Add Account
-        </Button>
-      </div>
+    const handleSave = () => {
+        if (!formData.country || !formData.bankName || !formData.accountNumber) {
+            alert("Please fill in the required fields.");
+            return;
+        }
 
-      <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-             <thead className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-200 dark:border-white/5 uppercase text-xs tracking-wider">
-               <tr>
-                 <th className="p-4">Country</th>
-                 <th className="p-4">Bank Name</th>
-                 <th className="p-4">Currency</th>
-                 <th className="p-4">Account Details</th>
-                 <th className="p-4">Status</th>
-                 <th className="p-4 text-right">Actions</th>
-               </tr>
-             </thead>
-             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {accounts.map(acc => (
-                  <tr key={acc.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
-                    <td className="p-4 font-medium text-slate-900 dark:text-white flex items-center gap-2">
-                       <Globe className="w-4 h-4 text-slate-400" />
-                       {acc.country}
-                    </td>
-                    <td className="p-4 text-slate-700 dark:text-slate-300">{acc.bankName}</td>
-                    <td className="p-4 font-mono text-slate-500">{acc.currency}</td>
-                    <td className="p-4">
-                      <div className="text-xs space-y-1">
-                        <p><span className="text-slate-500">ACC:</span> {acc.accountNumber}</p>
-                        <p><span className="text-slate-500">SWIFT:</span> {acc.swiftCode}</p>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                       <Badge value={acc.status === 'Active' ? 100 : -100} type="percent" />
-                    </td>
-                    <td className="p-4 text-right">
-                       <div className="flex justify-end gap-2">
-                          <button onClick={() => openEdit(acc)} className="p-2 rounded hover:bg-slate-200 dark:hover:bg-white/10 text-blue-500">
-                             <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDelete(acc.id)} className="p-2 rounded hover:bg-slate-200 dark:hover:bg-white/10 text-rose-500">
-                             <Trash2 className="w-4 h-4" />
-                          </button>
-                       </div>
-                    </td>
-                  </tr>
+        if (isEditing && currentId) {
+            setAccounts(accounts.map(acc => acc.id === currentId ? { ...acc, ...formData } : acc));
+        } else {
+            setAccounts([...accounts, { id: Date.now(), ...formData }]);
+        }
+        setIsModalOpen(false);
+    };
+
+    const handleDelete = (id: number) => {
+        if (confirm("Are you sure you want to delete this account?")) {
+            setAccounts(accounts.filter(acc => acc.id !== id));
+        }
+    };
+
+    return (
+        <div className="space-y-6 animate-in fade-in">
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t.globalAccounts}</h2>
+                <Button onClick={() => handleOpenModal()} className="w-auto px-4 py-2 gap-2">
+                    <Plus className="w-4 h-4" /> {t.addBankAccount}
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {accounts.map(account => (
+                    <GlassCard key={account.id} className="relative group hover:border-amber-500/30 transition-colors">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-lg shadow-sm border border-slate-300 dark:border-white/10">
+                                    <Globe className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 dark:text-white">{account.country}</h3>
+                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                        <span className="uppercase font-mono bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded">{account.currency}</span>
+                                        <span>{account.bankName}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleOpenModal(account)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-slate-500 hover:text-amber-500 transition-colors">
+                                    <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDelete(account.id)} className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-500 transition-colors">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/5">
+                             <div className="space-y-1">
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{t.accountHolder}</p>
+                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{account.accountHolder}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{t.accountNumber}</p>
+                                <p className="text-sm font-mono text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-black/20 p-1.5 rounded select-all">
+                                    {account.accountNumber}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{t.swiftCode}</p>
+                                <p className="text-sm font-mono text-slate-800 dark:text-slate-200">{account.swift}</p>
+                            </div>
+                        </div>
+                    </GlassCard>
                 ))}
-             </tbody>
-          </table>
+            </div>
+
+            <Modal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                title={isEditing ? t.editAccount : t.addBankAccount}
+            >
+                <div className="space-y-4 py-2">
+                    <Input 
+                        label={t.country}
+                        placeholder="e.g. United States"
+                        value={formData.country}
+                        onChange={(e) => setFormData({...formData, country: e.target.value})}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input 
+                            label={t.bankName}
+                            placeholder="e.g. Chase Bank"
+                            value={formData.bankName}
+                            onChange={(e) => setFormData({...formData, bankName: e.target.value})}
+                        />
+                        <Input 
+                            label={t.currency}
+                            placeholder="e.g. USD"
+                            value={formData.currency}
+                            onChange={(e) => setFormData({...formData, currency: e.target.value.toUpperCase()})}
+                        />
+                    </div>
+                    <Input 
+                        label={t.accountHolder}
+                        placeholder="e.g. Psychology Trade LLC"
+                        value={formData.accountHolder}
+                        onChange={(e) => setFormData({...formData, accountHolder: e.target.value})}
+                    />
+                    <Input 
+                        label={t.accountNumber}
+                        placeholder="Account Number or IBAN"
+                        value={formData.accountNumber}
+                        onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
+                    />
+                    <Input 
+                        label={t.swiftCode}
+                        placeholder="SWIFT / BIC / Routing Number"
+                        value={formData.swift}
+                        onChange={(e) => setFormData({...formData, swift: e.target.value})}
+                    />
+
+                    <div className="flex justify-end gap-3 mt-6">
+                        <Button variant="secondary" onClick={() => setIsModalOpen(false)} className="w-auto">{t.cancel}</Button>
+                        <Button onClick={handleSave} className="w-auto px-8">{t.saveChanges}</Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
-      </div>
-
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? "Edit Transfer Account" : "Add New Transfer Account"}>
-         <div className="space-y-4 py-2">
-            <Input label="Country" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} />
-            <Input label="Bank Name" value={formData.bankName} onChange={e => setFormData({...formData, bankName: e.target.value})} />
-            <div className="grid grid-cols-2 gap-4">
-               <Input label="Currency" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})} placeholder="USD, EUR, PEN" />
-               <Input label="SWIFT / IBAN" value={formData.swiftCode} onChange={e => setFormData({...formData, swiftCode: e.target.value})} />
-            </div>
-            <Input label="Account Number" value={formData.accountNumber} onChange={e => setFormData({...formData, accountNumber: e.target.value})} />
-            
-            <div className="flex gap-3 mt-6">
-               <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-               <Button onClick={handleSubmit}>{editingId ? "Update Account" : "Create Account"}</Button>
-            </div>
-         </div>
-      </Modal>
-    </div>
-  );
+    );
 };
-
-// ... UserManagement, KYCQueue, WithdrawalQueue, FeesConfig, SecurityAudit, AdminOverview components remain the same ...
 
 const UserManagement = ({ t }: { t: any }) => {
   const [users, setUsers] = useState(INITIAL_USERS);
@@ -421,7 +466,7 @@ const UserManagement = ({ t }: { t: any }) => {
                     <span className="text-[10px] text-slate-500 mt-1 block">{user.risk} {t.risk}</span>
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => handleFundClick(user)}
                         className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all hover:scale-105"
@@ -569,11 +614,17 @@ const WithdrawalQueue = ({ t }: { t: any }) => {
     const handleApprove = (tx: any) => {
         if (confirm(`Approve withdrawal of ${tx.amount} for ${tx.user}?`)) {
             setProcessingId(tx.id);
-            console.log(`[BACKEND] Processing withdrawal approval for ${tx.id}...`);
+            console.log(`[BACKEND] Initiating blockchain transfer for ${tx.id}...`);
             
             setTimeout(() => {
-                // Move to history
-                const completedTx = { ...tx, status: 'Completed', time: 'Just now', txHash: `0x${Math.random().toString(36).substr(2, 40)}` };
+                const completedTx = { 
+                    ...tx, 
+                    status: 'Completed', 
+                    time: 'Just now', 
+                    txHash: `0x${Math.random().toString(36).substr(2, 40)}`,
+                    completedAt: new Date().toISOString()
+                };
+                
                 setWithdrawalHistory([completedTx, ...withdrawalHistory]);
                 setPendingWithdrawals(pendingWithdrawals.filter(p => p.id !== tx.id));
                 setProcessingId(null);
@@ -582,32 +633,40 @@ const WithdrawalQueue = ({ t }: { t: any }) => {
                 console.log(`Transaction ID: ${tx.id}`);
                 console.log(`User: ${tx.user}`);
                 console.log(`Amount: ${tx.amount}`);
+                console.log(`Destination: ${tx.address}`);
                 console.log(`Status: COMPLETED`);
-                console.log(`Backend Action: Deduct ${tx.amount} from locked balance. Release to blockchain.`);
+                console.log(`Blockchain Hash: ${completedTx.txHash}`);
+                console.log(`Backend Action: Deducting ${tx.amount} from ${tx.user} locked balance. Ledger updated.`);
                 console.log("---------------------------");
-            }, 1500);
+            }, 2000);
         }
     };
 
     const handleReject = (tx: any) => {
-        if (confirm(`Reject withdrawal of ${tx.amount} for ${tx.user}?`)) {
+        if (confirm(`Reject withdrawal request? Funds will be returned to user.`)) {
             setProcessingId(tx.id);
-            console.log(`[BACKEND] Processing withdrawal rejection for ${tx.id}...`);
+            console.log(`[BACKEND] Processing rejection for ${tx.id}...`);
             
             setTimeout(() => {
-                 // Move to history
-                const rejectedTx = { ...tx, status: 'Rejected', time: 'Just now' };
+                const rejectedTx = { 
+                    ...tx, 
+                    status: 'Rejected', 
+                    time: 'Just now',
+                    completedAt: new Date().toISOString()
+                };
+                
                 setWithdrawalHistory([rejectedTx, ...withdrawalHistory]);
                 setPendingWithdrawals(pendingWithdrawals.filter(p => p.id !== tx.id));
-                 setProcessingId(null);
+                setProcessingId(null);
                  
                 console.log("--- WITHDRAWAL REJECTED ---");
                 console.log(`Transaction ID: ${tx.id}`);
                 console.log(`User: ${tx.user}`);
-                console.log(`Reason: Admin Decision`);
-                console.log(`Backend Action: Return ${tx.amount} to user main balance.`);
+                console.log(`Amount: ${tx.amount}`);
+                console.log(`Status: REJECTED`);
+                console.log(`Backend Action: Unlocking funds. ${tx.amount} returned to ${tx.user}'s available balance.`);
                 console.log("---------------------------");
-            }, 1500);
+            }, 2000);
         }
     };
 
@@ -867,7 +926,6 @@ const SecurityAudit = ({ t }: { t: any }) => {
 
 const AdminOverview = ({ t }: { t: any }) => (
     <div className="space-y-8 animate-in fade-in">
-        {/* ... existing metric cards ... */}
         {/* Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <GlassCard className="relative overflow-hidden group">
@@ -964,13 +1022,13 @@ const AdminOverview = ({ t }: { t: any }) => (
 
 export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggleTheme, lang, setLang }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showOpsMenu, setShowOpsMenu] = useState(false);
   const t = translations[lang];
 
-  const SidebarContent = () => (
-    <>
-      <div className="p-6 border-b border-slate-200 dark:border-white/5">
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-[#020617] text-slate-900 dark:text-white flex transition-colors duration-300">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex-col hidden lg:flex fixed h-full z-20">
+        <div className="p-6 border-b border-slate-200 dark:border-white/5">
            <div className="flex items-center gap-2 mb-1 cursor-pointer" onClick={() => setScreen(AppScreen.DASHBOARD)}>
             <Logo className="w-8 h-8" />
             <span className="font-bold text-lg tracking-tight">Psychology Trade</span>
@@ -979,26 +1037,26 @@ export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggle
             <ShieldAlert className="w-3 h-3 text-amber-600 dark:text-amber-500" />
             <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-500 tracking-wider">Admin Access</span>
           </div>
-      </div>
+        </div>
 
-      <div className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <div className="flex-1 p-4 space-y-1 overflow-y-auto">
           <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-2">Main</p>
-          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => {setActiveTab('overview'); setMobileMenuOpen(false);}} />
-          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => {setActiveTab('users'); setMobileMenuOpen(false);}} badge={24} />
+          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => setActiveTab('users')} badge={24} />
           
           <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-6">Operations</p>
-          <SidebarItem icon={Globe} label="Global Ops" active={activeTab === 'operations'} onClick={() => {setActiveTab('operations'); setMobileMenuOpen(false);}} />
-          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => {setActiveTab('kyc'); setMobileMenuOpen(false);}} badge={5} />
-          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => {setActiveTab('withdrawals'); setMobileMenuOpen(false);}} badge={2} />
-          <SidebarItem icon={FileText} label={t.transactions} active={activeTab === 'transactions'} onClick={() => {setActiveTab('transactions'); setMobileMenuOpen(false);}} />
+          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => setActiveTab('kyc')} badge={5} />
+          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => setActiveTab('withdrawals')} badge={2} />
+          <SidebarItem icon={FileText} label={t.transactions} active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
+          <SidebarItem icon={Landmark} label={t.globalAccounts} active={activeTab === 'global_accounts'} onClick={() => setActiveTab('global_accounts')} />
           
           <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-6">System</p>
-          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => {setActiveTab('fees'); setMobileMenuOpen(false);}} />
-          <SidebarItem icon={ShieldAlert} label={t.securityLogs} active={activeTab === 'security'} onClick={() => {setActiveTab('security'); setMobileMenuOpen(false);}} />
-          <SidebarItem icon={Settings} label={t.settings} active={false} onClick={() => setMobileMenuOpen(false)} />
-      </div>
+          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => setActiveTab('fees')} />
+          <SidebarItem icon={ShieldAlert} label={t.securityLogs} active={activeTab === 'security'} onClick={() => setActiveTab('security')} />
+          <SidebarItem icon={Settings} label={t.settings} active={false} onClick={() => {}} />
+        </div>
 
-      <div className="p-4 border-t border-slate-200 dark:border-white/5">
+        <div className="p-4 border-t border-slate-200 dark:border-white/5">
            <button 
              onClick={() => setScreen(AppScreen.SIGN_IN)}
              className="w-full flex items-center gap-3 p-3 text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
@@ -1006,39 +1064,13 @@ export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggle
              <LogOut className="w-5 h-5" />
              <span className="font-medium text-sm">{t.logout}</span>
            </button>
-      </div>
-    </>
-  );
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#020617] text-slate-900 dark:text-white flex transition-colors duration-300">
-      {/* Mobile Sidebar Overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-            <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-            <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white dark:bg-[#020617] border-r border-slate-200 dark:border-white/5 flex flex-col animate-in slide-in-from-left duration-300 shadow-2xl">
-                <div className="absolute top-4 right-4">
-                     <button onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10">
-                        <X className="w-5 h-5 text-slate-500" />
-                     </button>
-                </div>
-                <SidebarContent />
-            </aside>
         </div>
-      )}
-
-      {/* Desktop Sidebar */}
-      <aside className="w-64 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex-col hidden lg:flex fixed h-full z-20">
-        <SidebarContent />
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-64 p-4 lg:p-8 overflow-y-auto h-screen">
         <header className="flex justify-between items-center mb-8">
-           <div className="lg:hidden flex items-center gap-3">
-              <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10">
-                  <Menu className="w-6 h-6 text-slate-900 dark:text-white" />
-              </button>
+           <div className="lg:hidden">
               <Logo className="w-8 h-8" />
            </div>
            
@@ -1053,44 +1085,26 @@ export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggle
            <div className="flex items-center gap-4">
               <LanguageSelector current={lang} onChange={setLang} />
               <ThemeToggle isDark={isDark} toggle={toggleTheme} />
-              <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-white/10 relative">
+              <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-white/10">
                  <div className="text-right hidden sm:block">
                     <p className="text-sm font-bold text-slate-900 dark:text-white">Admin User</p>
                     <p className="text-xs text-slate-500">Super Admin</p>
                  </div>
-                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center cursor-pointer hover:bg-slate-300 dark:hover:bg-white/20 transition-colors" onClick={() => setShowOpsMenu(!showOpsMenu)}>
-                    <MoreVertical className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+                    <ShieldAlert className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                  </div>
-                 
-                 {/* Three Dots Ops Menu */}
-                 {showOpsMenu && (
-                   <div className="absolute top-12 right-0 w-48 bg-white dark:bg-[#1e2329] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in duration-200">
-                     <button 
-                       onClick={() => { setActiveTab('operations'); setShowOpsMenu(false); }}
-                       className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5 transition-colors text-slate-900 dark:text-white flex items-center gap-2"
-                     >
-                        <Globe className="w-4 h-4" /> Admin Operations
-                     </button>
-                     <button 
-                       onClick={() => { setShowOpsMenu(false); }}
-                       className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-white/5 transition-colors text-slate-900 dark:text-white flex items-center gap-2"
-                     >
-                        <Settings className="w-4 h-4" /> System Settings
-                     </button>
-                   </div>
-                 )}
               </div>
            </div>
         </header>
 
         {/* Tab Content */}
         {activeTab === 'overview' && <AdminOverview t={t} />}
-        {activeTab === 'operations' && <GlobalOps t={t} />}
         {activeTab === 'users' && <UserManagement t={t} />}
         {activeTab === 'kyc' && <KYCQueue t={t} />}
         {activeTab === 'withdrawals' && <WithdrawalQueue t={t} />}
         {activeTab === 'fees' && <FeesConfig t={t} />}
         {activeTab === 'security' && <SecurityAudit t={t} />}
+        {activeTab === 'global_accounts' && <GlobalAccountsManager t={t} />}
       </main>
     </div>
   );

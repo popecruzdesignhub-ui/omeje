@@ -36,7 +36,16 @@ export default function App() {
     case AppScreen.VERIFICATION:
       return <Verification setScreen={setScreen} />;
     case AppScreen.DASHBOARD:
-      return <MainApp setScreen={setScreen} isDark={isDark} toggleTheme={toggleTheme} />;
+      // Pass required props for localization
+      return (
+        <MainApp 
+          setScreen={setScreen} 
+          isDark={isDark} 
+          toggleTheme={toggleTheme} 
+          lang={lang}
+          setLang={setLang}
+        />
+      );
     case AppScreen.ADMIN_DASHBOARD:
       return (
         <AdminDashboard 

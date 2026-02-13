@@ -5,8 +5,8 @@ import {
   BarChart2, List, Activity, Layers
 } from 'lucide-react';
 import { GlassCard, Button, Input, Badge, Logo } from '../components/UI';
-import { CandlestickChart } from '../components/Charts';
-import { AppScreen, Asset, Transaction } from '../types';
+import { TradingViewWidget } from '../components/Charts';
+import { AppScreen, Asset, Transaction, ChartDataPoint } from '../types';
 import { getAssets, generateHistory } from '../services/dataService';
 
 export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> = ({ setScreen }) => {
@@ -20,17 +20,41 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
   // Mock Data
   const assets = getAssets();
   const activeAsset = assets.find(a => a.symbol === selectedPair.split('/')[0]) || assets[0];
-  const candleData = activeAsset.history; // Uses the history with OHLC generated in dataService
+  
+  // Real-time Simulation State (for Header/OrderBook only)
+  const [currentPrice, setCurrentPrice] = useState(activeAsset.price);
+  const [priceChange, setPriceChange] = useState(activeAsset.change24h);
+
+  // Initialize data on asset change
+  useEffect(() => {
+    setCurrentPrice(activeAsset.price);
+    setPriceChange(activeAsset.change24h);
+    setPrice(activeAsset.price.toFixed(2));
+  }, [activeAsset]);
+
+  // Simulate Real-time Data for header and orderbook
+  useEffect(() => {
+    const interval = setInterval(() => {
+        // Simulate Volatility
+        const volatility = currentPrice * 0.0005; 
+        const change = (Math.random() - 0.5) * volatility;
+        const newPrice = currentPrice + change;
+        
+        setCurrentPrice(newPrice);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentPrice]);
 
   // Mock Order Book
   const asks = Array.from({length: 12}, (_, i) => ({ 
-    price: (activeAsset.price + (i * 5) + Math.random() * 2).toFixed(2), 
+    price: (currentPrice + (i * 5) + Math.random() * 2).toFixed(2), 
     amount: (Math.random() * 2).toFixed(4), 
     total: (Math.random() * 10000).toFixed(2)
   })).reverse();
   
   const bids = Array.from({length: 12}, (_, i) => ({ 
-    price: (activeAsset.price - (i * 5) - Math.random() * 2).toFixed(2), 
+    price: (currentPrice - (i * 5) - Math.random() * 2).toFixed(2), 
     amount: (Math.random() * 2).toFixed(4), 
     total: (Math.random() * 10000).toFixed(2)
   }));
@@ -61,12 +85,12 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
           <div className="hidden sm:flex items-center gap-3 text-xs font-medium">
              <div className="flex flex-col items-end">
                 <span className="text-[#EAECEF]">BTC/USDT</span>
-                <span className="text-emerald-500">${activeAsset.price.toLocaleString()}</span>
+                <span className="text-emerald-500">${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
              </div>
              <div className="flex flex-col items-end">
                 <span className="text-[#848e9c]">24h Change</span>
-                <span className={activeAsset.change24h >= 0 ? "text-emerald-500" : "text-rose-500"}>
-                    {activeAsset.change24h > 0 ? '+' : ''}{activeAsset.change24h.toFixed(2)}%
+                <span className={priceChange >= 0 ? "text-emerald-500" : "text-rose-500"}>
+                    {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
                 </span>
              </div>
           </div>
@@ -191,35 +215,16 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
         </div>
 
         {/* Center Panel: Chart (6 cols) */}
-        <div className="lg:col-span-6 bg-[#1e2329] rounded-sm border border-[#2b3139] flex flex-col relative">
-           {/* Chart Header */}
-           <div className="flex items-center justify-between p-3 border-b border-[#2b3139]">
-              <div className="flex items-center gap-4">
-                 <div className="flex gap-2">
-                    {['15m', '1H', '4H', '1D', '1W'].map(tf => (
-                        <button key={tf} className="text-xs text-[#848e9c] hover:text-[#FCD535] font-medium transition-colors">{tf}</button>
-                    ))}
-                    <button className="text-xs text-[#848e9c] hover:text-[#FCD535] font-medium transition-colors"><ChevronDown className="w-3 h-3" /></button>
-                 </div>
-                 <div className="w-px h-4 bg-[#2b3139]"></div>
-                 <button className="text-xs text-[#848e9c] flex items-center gap-1"><Activity className="w-3 h-3" /> Indicators</button>
-              </div>
-              <div className="flex items-center gap-2">
-                 <button className="p-1 hover:bg-[#2b3139] rounded"><Settings className="w-4 h-4 text-[#848e9c]" /></button>
-                 <button className="p-1 hover:bg-[#2b3139] rounded"><ArrowUp className="w-4 h-4 text-[#848e9c]" /></button>
-              </div>
-           </div>
+        <div className="lg:col-span-6 bg-[#1e2329] rounded-sm border border-[#2b3139] flex flex-col relative overflow-hidden">
+           {/* Chart Header removed as TV widget has its own */}
            
            {/* Chart Area */}
-           <div className="flex-1 w-full h-full p-2 bg-[#161a1e] relative">
-              {/* Using CandlestickChart component */}
-              <div className="absolute inset-0 p-2">
-                  <CandlestickChart data={candleData} height={500} />
-              </div>
-              {/* Watermark */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none select-none">
-                 <Logo className="w-48 h-48 grayscale" />
-              </div>
+           <div className="flex-1 w-full h-full bg-[#161a1e] relative">
+              <TradingViewWidget 
+                  symbol={`BINANCE:${selectedPair.replace('/', '')}`} 
+                  theme="dark" 
+                  height="100%"
+              />
            </div>
         </div>
 
@@ -254,11 +259,11 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
 
               {/* Current Price */}
               <div className="py-2 px-4 flex items-center gap-2 border-y border-[#2b3139] bg-[#161a1e]">
-                 <span className={`text-lg font-bold ${activeAsset.change24h >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                    {activeAsset.price.toLocaleString()}
+                 <span className={`text-lg font-bold ${priceChange >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                    {currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                  </span>
-                 <ArrowUp className="w-4 h-4 text-[#0ECB81]" />
-                 <span className="text-xs text-[#848e9c]">${activeAsset.price.toLocaleString()}</span>
+                 {priceChange >= 0 ? <ArrowUp className="w-4 h-4 text-[#0ECB81]" /> : <ArrowDown className="w-4 h-4 text-[#F6465D]" />}
+                 <span className="text-xs text-[#848e9c]">${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
               {/* Bids (Buy Orders) - Green */}

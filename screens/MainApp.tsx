@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, LineChart, Wallet, User, Bell, Search, 
   ArrowUpRight, ArrowDownLeft, SlidersHorizontal, ChevronRight,
   RefreshCcw, Sparkles, X, ArrowRightLeft, Star, Download,
-  ChevronDown, ChevronUp, LogOut, Eye, EyeOff
+  ChevronDown, ChevronUp, LogOut, Eye, EyeOff, Camera
 } from 'lucide-react';
 import { GlassCard, Button, Badge, Modal, ThemeToggle, LanguageSelector } from '../components/UI';
 import { SimpleAreaChart, Sparkline } from '../components/Charts';
@@ -271,7 +271,7 @@ const MarketList = ({
             <div className="mb-6 relative px-1"><Search className="absolute left-5 top-3.5 w-5 h-5 text-slate-500" /><input type="text" placeholder="Search assets..." className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-4 text-slate-900 dark:text-white focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 outline-none transition-all placeholder-slate-400 dark:placeholder-slate-600"/></div>
             <div className="space-y-2">
                 <div className="grid grid-cols-12 text-xs font-medium text-slate-500 px-4 pb-2"><span className="col-span-1"></span><span className="col-span-5">Asset</span><span className="col-span-3 text-right">Price</span><span className="col-span-3 text-right">24h</span></div>
-                {assets.map(asset => { const isWatched = watchlist.includes(asset.id); return (<div key={asset.id} onClick={() => onViewAsset(asset)} className="grid grid-cols-12 items-center p-4 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-white/5 active:scale-[0.99] group"><div className="col-span-1" onClick={(e) => { e.stopPropagation(); toggleWatchlist(asset.id); }}><Star className={`w-4 h-4 transition-colors ${isWatched ? 'text-amber-500 fill-amber-500' : 'text-slate-400 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400'}`} /></div><div className="col-span-5 flex items-center gap-3"><div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{backgroundColor: `${asset.color}20`, color: asset.color}}>{asset.symbol[0]}</div><div><p className="font-bold text-slate-900 dark:text-white text-sm">{asset.symbol}</p><p className="text-xs text-slate-500 truncate hidden sm:block">{asset.name}</p></div></div><div className="col-span-3 text-right font-medium text-sm text-slate-900 dark:text-white">{formatPrice(asset.price)}</div><div className="col-span-3 flex justify-end"><Badge value={asset.change24h} /></div></div>); })}
+                {assets.map(asset => { const isWatched = watchlist.includes(asset.id); return (<div key={asset.id} onClick={() => onViewAsset(asset)} className="grid grid-cols-12 items-center p-4 hover:bg-slate-5 dark:hover:bg-white/5 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-white/5 active:scale-[0.99] group"><div className="col-span-1" onClick={(e) => { e.stopPropagation(); toggleWatchlist(asset.id); }}><Star className={`w-4 h-4 transition-colors ${isWatched ? 'text-amber-500 fill-amber-500' : 'text-slate-400 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400'}`} /></div><div className="col-span-5 flex items-center gap-3"><div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{backgroundColor: `${asset.color}20`, color: asset.color}}>{asset.symbol[0]}</div><div><p className="font-bold text-slate-900 dark:text-white text-sm">{asset.symbol}</p><p className="text-xs text-slate-500 truncate hidden sm:block">{asset.name}</p></div></div><div className="col-span-3 text-right font-medium text-sm text-slate-900 dark:text-white">{formatPrice(asset.price)}</div><div className="col-span-3 flex justify-end"><Badge value={asset.change24h} /></div></div>); })}
             </div>
         </div>
     );
@@ -288,6 +288,8 @@ export const MainApp: React.FC<{
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>('USD');
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Watchlist State with persistence
   const [watchlist, setWatchlist] = useState<string[]>(() => {
@@ -317,6 +319,17 @@ export const MainApp: React.FC<{
 
   const handleAssetClick = (asset: Asset) => {
     setSelectedAsset(asset);
+  };
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const renderContent = () => {
@@ -366,8 +379,29 @@ export const MainApp: React.FC<{
       case DashboardTab.PROFILE:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6 animate-in fade-in">
-             <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-white/5 flex items-center justify-center mb-6">
-                <User className="w-10 h-10 text-slate-500 dark:text-slate-600" />
+             <div className="relative mb-6 group">
+                <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-white/5 flex items-center justify-center overflow-hidden border-2 border-slate-200 dark:border-white/10">
+                   {avatar ? (
+                     <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                   ) : (
+                     <User className="w-10 h-10 text-slate-500 dark:text-slate-600" />
+                   )}
+                </div>
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 p-2 bg-amber-500 rounded-full text-white shadow-lg hover:bg-amber-600 transition-colors"
+                  title="Change Avatar"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  capture="user"
+                  onChange={handleAvatarChange}
+                />
              </div>
              <h3 className="text-xl font-bold text-slate-900 dark:text-white">John Doe</h3>
              <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto mb-4">john.doe@example.com</p>
@@ -407,8 +441,8 @@ export const MainApp: React.FC<{
           onClick={() => setActiveTab(DashboardTab.PROFILE)}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
         >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-black font-bold text-sm shadow-lg shadow-orange-500/20">
-                JD
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-black font-bold text-sm shadow-lg shadow-orange-500/20 overflow-hidden">
+                {avatar ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : "JD"}
             </div>
             <div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Welcome back</p>

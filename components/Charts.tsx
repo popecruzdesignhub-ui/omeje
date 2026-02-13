@@ -1,5 +1,5 @@
-import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import React, { useEffect, useRef } from 'react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartDataPoint } from '../types';
 
 interface ChartProps {
@@ -74,7 +74,6 @@ export const Sparkline: React.FC<{ data: { value: number }[]; color: string; isP
   </div>
 );
 
-// Custom Candlestick implementation using SVG for precision control without heavy libs
 export const CandlestickChart: React.FC<{ data: ChartDataPoint[], height?: number }> = ({ data, height = 400 }) => {
     // Calculate scales
     const allValues = data.flatMap(d => [d.high || d.value, d.low || d.value]);
@@ -91,61 +90,136 @@ export const CandlestickChart: React.FC<{ data: ChartDataPoint[], height?: numbe
         <div className="relative w-full select-none" style={{ height }}>
             <svg width="100%" height="100%" className="overflow-visible">
                 {/* Grid Lines */}
-                {[0, 0.25, 0.5, 0.75, 1].map(p => {
-                    const y = height * p;
-                    const price = yMax - (p * yRange);
-                    return (
-                        <g key={p}>
-                            <line x1="0" y1={y} x2="100%" y2={y} stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
-                            <text x="100%" y={y - 4} textAnchor="end" fill="#64748b" fontSize="10">{price.toFixed(2)}</text>
-                        </g>
-                    )
-                })}
+                {[0, 0.25, 0.5, 0.75, 1].map(t => (
+                    <line 
+                        key={t} 
+                        x1="0" 
+                        y1={height * t} 
+                        x2="100%" 
+                        y2={height * t} 
+                        stroke="#2b3139" 
+                        strokeWidth="1" 
+                        strokeDasharray="4 4" 
+                    />
+                ))}
                 
-                {/* Candles */}
                 {data.map((d, i) => {
+                    const x = (i / (data.length - 1)) * 100;
                     const open = d.open || d.value;
                     const close = d.close || d.value;
-                    const high = d.high || Math.max(open, close);
-                    const low = d.low || Math.min(open, close);
+                    const high = d.high || d.value;
+                    const low = d.low || d.value;
                     
-                    const x = `${(i / data.length) * 100}%`;
-                    const widthPct = 100 / data.length;
-                    const barCenter = `${(i / data.length) * 100 + (widthPct/2)}%`;
+                    const isGreen = close >= open;
+                    const color = isGreen ? '#0ECB81' : '#F6465D';
                     
-                    const isUp = close >= open;
-                    const color = isUp ? '#10b981' : '#f43f5e';
-                    
-                    const yHigh = getY(high);
-                    const yLow = getY(low);
-                    const yOpen = getY(open);
-                    const yClose = getY(close);
-                    
-                    const bodyTop = Math.min(yOpen, yClose);
-                    const bodyHeight = Math.max(1, Math.abs(yOpen - yClose));
-
                     return (
-                        <g key={i} className="hover:opacity-80 transition-opacity">
-                             {/* Wick */}
-                             <line x1={barCenter} y1={yHigh} x2={barCenter} y2={yLow} stroke={color} strokeWidth="1" />
-                             {/* Body */}
-                             <rect 
-                                x={`calc(${x} + 2px)`} 
-                                y={bodyTop} 
-                                width={`calc(${widthPct}% - 4px)`} 
-                                height={bodyHeight} 
+                        <g key={i}>
+                            {/* Wick */}
+                            <line 
+                                x1={`${x}%`} 
+                                y1={getY(high)} 
+                                x2={`${x}%`} 
+                                y2={getY(low)} 
+                                stroke={color} 
+                                strokeWidth="1" 
+                            />
+                            {/* Body */}
+                            <rect 
+                                x={`calc(${x}% - 3px)`} 
+                                y={getY(Math.max(open, close))} 
+                                width="6" 
+                                height={Math.max(1, Math.abs(getY(open) - getY(close)))} 
                                 fill={color} 
-                             />
+                            />
                         </g>
                     );
                 })}
             </svg>
-            {/* X Axis Labels */}
-            <div className="absolute bottom-0 w-full flex justify-between text-[10px] text-slate-500 px-2 pointer-events-none">
-                {data.filter((_, i) => i % 6 === 0).map((d, i) => (
-                    <span key={i}>{d.time}</span>
-                ))}
-            </div>
+            
+            {/* Current Price Line */}
+            {data.length > 0 && (
+                <div 
+                    className="absolute right-0 flex items-center" 
+                    style={{ top: getY(data[data.length - 1].close || 0) }}
+                >
+                    <div className="w-full h-px bg-white/50 border-t border-dashed border-white/50 absolute right-0" style={{ width: '100vw' }} />
+                    <span className="bg-slate-700 text-white text-[10px] px-1 rounded ml-1 z-10">
+                        {(data[data.length - 1].close || 0).toFixed(2)}
+                    </span>
+                </div>
+            )}
         </div>
     );
+};
+
+declare global {
+  interface Window {
+    TradingView: any;
+  }
+}
+
+export const TradingViewWidget: React.FC<{ symbol?: string; theme?: 'light' | 'dark'; height?: number | string }> = ({ 
+  symbol = "BINANCE:BTCUSDT", 
+  theme = 'dark',
+  height = "100%" 
+}) => {
+  const containerId = useRef(`tv_chart_container_${Math.random().toString(36).substring(7)}`);
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    
+    // Check if script is already present
+    let script = document.getElementById('tv-widget-script') as HTMLScriptElement;
+    
+    const initWidget = () => {
+      if (window.TradingView && document.getElementById(containerId.current)) {
+        new window.TradingView.widget({
+          "autosize": true,
+          "symbol": symbol,
+          "interval": "D",
+          "timezone": "Etc/UTC",
+          "theme": theme === 'dark' ? 'dark' : 'light',
+          "style": "1",
+          "locale": "en",
+          "enable_publishing": false,
+          "allow_symbol_change": true,
+          "container_id": containerId.current,
+          "hide_side_toolbar": false,
+          "withdateranges": true,
+          "toolbar_bg": "#1e2329",
+          "studies": [
+             "MASimple@tv-basicstudies"
+          ]
+        });
+        hasInitialized.current = true;
+      }
+    };
+
+    if (!script) {
+        script = document.createElement("script");
+        script.id = 'tv-widget-script';
+        script.src = "https://s3.tradingview.com/tv.js";
+        script.async = true;
+        script.onload = initWidget;
+        document.head.appendChild(script);
+    } else {
+        if (window.TradingView) {
+            initWidget();
+        } else {
+            script.addEventListener('load', initWidget);
+        }
+    }
+
+    return () => {
+        // Optional cleanup if necessary
+    };
+  }, [symbol, theme]);
+
+  return (
+    <div className="w-full h-full" style={{ minHeight: typeof height === 'number' ? height : '500px' }}>
+        <div id={containerId.current} className="w-full h-full" />
+    </div>
+  );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bell, Search, User, LogOut, ChevronDown, 
   ArrowUp, ArrowDown, Settings, Clock, 
@@ -8,6 +8,22 @@ import { GlassCard, Button, Input, Badge, Logo } from '../components/UI';
 import { TradingViewWidget } from '../components/Charts';
 import { AppScreen, Asset, Transaction, ChartDataPoint } from '../types';
 import { getAssets, generateHistory } from '../services/dataService';
+
+// Helper to generate realistic order book data
+const generateOrderBookData = (basePrice: number) => {
+  const asks = Array.from({length: 12}, (_, i) => ({ 
+    price: (basePrice + (i * 2) + Math.random() * 2).toFixed(2), 
+    amount: (Math.random() * 2.5).toFixed(4), 
+    total: (Math.random() * 50000).toFixed(2)
+  })).reverse();
+  
+  const bids = Array.from({length: 12}, (_, i) => ({ 
+    price: (basePrice - (i * 2) - Math.random() * 2).toFixed(2), 
+    amount: (Math.random() * 2.5).toFixed(4), 
+    total: (Math.random() * 50000).toFixed(2)
+  }));
+  return { asks, bids };
+};
 
 export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> = ({ setScreen }) => {
   const [selectedPair, setSelectedPair] = useState('BTC/USDT');
@@ -21,43 +37,37 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
   const assets = getAssets();
   const activeAsset = assets.find(a => a.symbol === selectedPair.split('/')[0]) || assets[0];
   
-  // Real-time Simulation State (for Header/OrderBook only)
+  // Real-time Simulation State
   const [currentPrice, setCurrentPrice] = useState(activeAsset.price);
   const [priceChange, setPriceChange] = useState(activeAsset.change24h);
+  const [orderBook, setOrderBook] = useState(generateOrderBookData(activeAsset.price));
 
   // Initialize data on asset change
   useEffect(() => {
     setCurrentPrice(activeAsset.price);
     setPriceChange(activeAsset.change24h);
     setPrice(activeAsset.price.toFixed(2));
+    setOrderBook(generateOrderBookData(activeAsset.price));
   }, [activeAsset]);
 
   // Simulate Real-time Data for header and orderbook
   useEffect(() => {
     const interval = setInterval(() => {
-        // Simulate Volatility
-        const volatility = currentPrice * 0.0005; 
-        const change = (Math.random() - 0.5) * volatility;
-        const newPrice = currentPrice + change;
-        
-        setCurrentPrice(newPrice);
+        setCurrentPrice(prev => {
+            // Simulate Volatility
+            const volatility = prev * 0.0005; 
+            const change = (Math.random() - 0.5) * volatility;
+            const newPrice = prev + change;
+            
+            // Update Order Book based on new price
+            setOrderBook(generateOrderBookData(newPrice));
+            
+            return newPrice;
+        });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentPrice]);
-
-  // Mock Order Book
-  const asks = Array.from({length: 12}, (_, i) => ({ 
-    price: (currentPrice + (i * 5) + Math.random() * 2).toFixed(2), 
-    amount: (Math.random() * 2).toFixed(4), 
-    total: (Math.random() * 10000).toFixed(2)
-  })).reverse();
-  
-  const bids = Array.from({length: 12}, (_, i) => ({ 
-    price: (currentPrice - (i * 5) - Math.random() * 2).toFixed(2), 
-    amount: (Math.random() * 2).toFixed(4), 
-    total: (Math.random() * 10000).toFixed(2)
-  }));
+  }, []);
 
   const handleLogoClick = () => {
     // Navigate back to the main dashboard (Home)
@@ -216,8 +226,6 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
 
         {/* Center Panel: Chart (6 cols) */}
         <div className="lg:col-span-6 bg-[#1e2329] rounded-sm border border-[#2b3139] flex flex-col relative overflow-hidden">
-           {/* Chart Header removed as TV widget has its own */}
-           
            {/* Chart Area */}
            <div className="flex-1 w-full h-full bg-[#161a1e] relative">
               <TradingViewWidget 
@@ -246,7 +254,7 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
               
               {/* Asks (Sell Orders) - Red */}
               <div className="flex-1 overflow-hidden relative">
-                 {asks.map((ask, i) => (
+                 {orderBook.asks.map((ask, i) => (
                     <div key={i} className="grid grid-cols-3 px-3 py-0.5 text-xs relative hover:bg-[#2b3139] cursor-pointer group">
                        <span className="text-[#F6465D] font-mono z-10 relative">{ask.price}</span>
                        <span className="text-[#EAECEF] text-right font-mono z-10 relative group-hover:text-white opacity-80">{ask.amount}</span>
@@ -268,7 +276,7 @@ export const TradingDashboard: React.FC<{ setScreen: (s: AppScreen) => void }> =
 
               {/* Bids (Buy Orders) - Green */}
               <div className="flex-1 overflow-hidden relative">
-                 {bids.map((bid, i) => (
+                 {orderBook.bids.map((bid, i) => (
                     <div key={i} className="grid grid-cols-3 px-3 py-0.5 text-xs relative hover:bg-[#2b3139] cursor-pointer group">
                        <span className="text-[#0ECB81] font-mono z-10 relative">{bid.price}</span>
                        <span className="text-[#EAECEF] text-right font-mono z-10 relative group-hover:text-white opacity-80">{bid.amount}</span>

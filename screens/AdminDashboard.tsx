@@ -5,7 +5,7 @@ import {
   MoreVertical, Server, Database, FileText, DollarSign,
   Lock, TrendingUp, Menu, ChevronRight, Wallet, CreditCard,
   Ban, Check, RefreshCcw, Eye, Trash2, Unlock, Clock,
-  Filter, ExternalLink, Calendar, Loader2
+  Filter, ExternalLink, Calendar, Loader2, X
 } from 'lucide-react';
 import { GlassCard, Button, Input, Modal, Badge, Logo, ThemeToggle, LanguageSelector } from '../components/UI';
 import { AppScreen } from '../types';
@@ -278,7 +278,7 @@ const UserManagement = ({ t }: { t: any }) => {
                     <span className="text-[10px] text-slate-500 mt-1 block">{user.risk} {t.risk}</span>
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-2">
                       <button 
                         onClick={() => handleFundClick(user)}
                         className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all hover:scale-105"
@@ -820,13 +820,12 @@ const AdminOverview = ({ t }: { t: any }) => (
 
 export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggleTheme, lang, setLang }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const t = translations[lang];
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#020617] text-slate-900 dark:text-white flex transition-colors duration-300">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex-col hidden lg:flex fixed h-full z-20">
-        <div className="p-6 border-b border-slate-200 dark:border-white/5">
+  const SidebarContent = () => (
+    <>
+      <div className="p-6 border-b border-slate-200 dark:border-white/5">
            <div className="flex items-center gap-2 mb-1 cursor-pointer" onClick={() => setScreen(AppScreen.DASHBOARD)}>
             <Logo className="w-8 h-8" />
             <span className="font-bold text-lg tracking-tight">Psychology Trade</span>
@@ -835,25 +834,25 @@ export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggle
             <ShieldAlert className="w-3 h-3 text-amber-600 dark:text-amber-500" />
             <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-500 tracking-wider">Admin Access</span>
           </div>
-        </div>
+      </div>
 
-        <div className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <div className="flex-1 p-4 space-y-1 overflow-y-auto">
           <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-2">Main</p>
-          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => setActiveTab('users')} badge={24} />
+          <SidebarItem icon={Activity} label={t.overview} active={activeTab === 'overview'} onClick={() => {setActiveTab('overview'); setMobileMenuOpen(false);}} />
+          <SidebarItem icon={Users} label={t.usersAccess} active={activeTab === 'users'} onClick={() => {setActiveTab('users'); setMobileMenuOpen(false);}} badge={24} />
           
           <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-6">Operations</p>
-          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => setActiveTab('kyc')} badge={5} />
-          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => setActiveTab('withdrawals')} badge={2} />
-          <SidebarItem icon={FileText} label={t.transactions} active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
+          <SidebarItem icon={CheckCircle2} label={t.kycApprovals} active={activeTab === 'kyc'} onClick={() => {setActiveTab('kyc'); setMobileMenuOpen(false);}} badge={5} />
+          <SidebarItem icon={Wallet} label={t.withdrawals} active={activeTab === 'withdrawals'} onClick={() => {setActiveTab('withdrawals'); setMobileMenuOpen(false);}} badge={2} />
+          <SidebarItem icon={FileText} label={t.transactions} active={activeTab === 'transactions'} onClick={() => {setActiveTab('transactions'); setMobileMenuOpen(false);}} />
           
           <p className="px-3 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2 mt-6">System</p>
-          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => setActiveTab('fees')} />
-          <SidebarItem icon={ShieldAlert} label={t.securityLogs} active={activeTab === 'security'} onClick={() => setActiveTab('security')} />
-          <SidebarItem icon={Settings} label={t.settings} active={false} onClick={() => {}} />
-        </div>
+          <SidebarItem icon={DollarSign} label={t.feeSettings} active={activeTab === 'fees'} onClick={() => {setActiveTab('fees'); setMobileMenuOpen(false);}} />
+          <SidebarItem icon={ShieldAlert} label={t.securityLogs} active={activeTab === 'security'} onClick={() => {setActiveTab('security'); setMobileMenuOpen(false);}} />
+          <SidebarItem icon={Settings} label={t.settings} active={false} onClick={() => setMobileMenuOpen(false)} />
+      </div>
 
-        <div className="p-4 border-t border-slate-200 dark:border-white/5">
+      <div className="p-4 border-t border-slate-200 dark:border-white/5">
            <button 
              onClick={() => setScreen(AppScreen.SIGN_IN)}
              className="w-full flex items-center gap-3 p-3 text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
@@ -861,13 +860,39 @@ export const AdminDashboard: React.FC<AdminProps> = ({ setScreen, isDark, toggle
              <LogOut className="w-5 h-5" />
              <span className="font-medium text-sm">{t.logout}</span>
            </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-[#020617] text-slate-900 dark:text-white flex transition-colors duration-300">
+      {/* Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+            <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white dark:bg-[#020617] border-r border-slate-200 dark:border-white/5 flex flex-col animate-in slide-in-from-left duration-300 shadow-2xl">
+                <div className="absolute top-4 right-4">
+                     <button onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10">
+                        <X className="w-5 h-5 text-slate-500" />
+                     </button>
+                </div>
+                <SidebarContent />
+            </aside>
         </div>
+      )}
+
+      {/* Desktop Sidebar */}
+      <aside className="w-64 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-r border-slate-200 dark:border-white/5 flex-col hidden lg:flex fixed h-full z-20">
+        <SidebarContent />
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-64 p-4 lg:p-8 overflow-y-auto h-screen">
         <header className="flex justify-between items-center mb-8">
-           <div className="lg:hidden">
+           <div className="lg:hidden flex items-center gap-3">
+              <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10">
+                  <Menu className="w-6 h-6 text-slate-900 dark:text-white" />
+              </button>
               <Logo className="w-8 h-8" />
            </div>
            

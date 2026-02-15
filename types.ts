@@ -32,6 +32,25 @@ export interface Transaction {
   status: 'completed' | 'pending' | 'failed';
 }
 
+export interface GlobalAccount {
+  id: number;
+  country: string;
+  bankName: string;
+  accountHolder: string;
+  accountNumber: string;
+  swift: string;
+  currency: string;
+  address: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model' | 'admin';
+  text: string;
+  timestamp: number;
+  isToolOutput?: boolean;
+}
+
 export enum AppScreen {
   ONBOARDING = 'ONBOARDING',
   SIGN_UP = 'SIGN_UP',

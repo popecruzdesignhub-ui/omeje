@@ -1,4 +1,4 @@
-import { Asset, ChartDataPoint, Transaction } from '../types';
+import { Asset, ChartDataPoint, Transaction, GlobalAccount, ChatMessage } from '../types';
 
 const BASE_ASSETS = [
   { id: '1', symbol: 'BTC', name: 'Bitcoin', price: 64230.50, color: '#f59e0b', iconUrl: 'https://assets.coincap.io/assets/icons/btc@2x.png' },
@@ -6,6 +6,15 @@ const BASE_ASSETS = [
   { id: '3', symbol: 'SOL', name: 'Solana', price: 145.80, color: '#14f195', iconUrl: 'https://assets.coincap.io/assets/icons/sol@2x.png' },
   { id: '4', symbol: 'DOT', name: 'Polkadot', price: 7.20, color: '#e6007a', iconUrl: 'https://assets.coincap.io/assets/icons/dot@2x.png' },
   { id: '5', symbol: 'ADA', name: 'Cardano', price: 0.45, color: '#0033ad', iconUrl: 'https://assets.coincap.io/assets/icons/ada@2x.png' },
+];
+
+const INITIAL_GLOBAL_ACCOUNTS: GlobalAccount[] = [
+    { id: 1, country: 'United States', bankName: 'Chase Bank', accountHolder: 'Psychology Trade LLC', accountNumber: '987654321', swift: 'CHASUS33', currency: 'USD', address: '270 Park Ave, New York, NY 10017' },
+    { id: 2, country: 'Europe (SEPA)', bankName: 'Deutsche Bank', accountHolder: 'Psychology Trade GmbH', accountNumber: 'DE45 1007 0024 0567 8901 00', swift: 'DEUTDEFF', currency: 'EUR', address: 'Taunusanlage 12, 60325 Frankfurt' },
+    { id: 3, country: 'United Kingdom', bankName: 'Barclays', accountHolder: 'Psychology Trade Ltd', accountNumber: '20-45-67 88997766', swift: 'BARCGB22', currency: 'GBP', address: '1 Churchill Place, London E14 5HP' },
+    { id: 4, country: 'Mexico', bankName: 'BBVA Bancomer', accountHolder: 'Psychology Trade MX', accountNumber: '012 180 00195555555 1', swift: 'BCMRMXMM', currency: 'MXN', address: 'Av. Paseo de la Reforma 510, CDMX' },
+    { id: 5, country: 'Peru', bankName: 'BCP', accountHolder: 'Psychology Trade Peru SAC', accountNumber: '193-1234567-0-99', swift: 'BCPLPLL', currency: 'PEN', address: 'Centenario 156, La Molina, Lima' },
+    { id: 6, country: 'Spain', bankName: 'Santander', accountHolder: 'Psychology Trade ES', accountNumber: 'ES91 2100 0418 45 1234567890', swift: 'BSCHESMM', currency: 'EUR', address: 'Av. de Cantabria, s/n, 28660 Boadilla del Monte, Madrid' },
 ];
 
 export const generateHistory = (basePrice: number, points: number = 24): ChartDataPoint[] => {
@@ -61,4 +70,39 @@ export const getTransactions = (): Transaction[] => {
     { id: 't2', type: 'deposit', amount: 1000, date: '2023-10-23', status: 'completed' },
     { id: 't3', type: 'sell', assetSymbol: 'ETH', amount: 1.2, date: '2023-10-20', status: 'completed' },
   ];
+};
+
+export const getGlobalAccounts = (): GlobalAccount[] => {
+  try {
+    const stored = localStorage.getItem('global_accounts');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error("Failed to parse global accounts", e);
+  }
+  // Initialize defaults
+  localStorage.setItem('global_accounts', JSON.stringify(INITIAL_GLOBAL_ACCOUNTS));
+  return INITIAL_GLOBAL_ACCOUNTS;
+};
+
+export const saveGlobalAccounts = (accounts: GlobalAccount[]) => {
+  localStorage.setItem('global_accounts', JSON.stringify(accounts));
+};
+
+// --- Chat Persistence for Admin-User Interaction ---
+
+export const getChatHistory = (): ChatMessage[] => {
+  try {
+    const stored = localStorage.getItem('support_chat_history');
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveChatHistory = (messages: ChatMessage[]) => {
+  localStorage.setItem('support_chat_history', JSON.stringify(messages));
+  // Dispatch event for cross-component updates
+  window.dispatchEvent(new Event('chat_updated'));
 };

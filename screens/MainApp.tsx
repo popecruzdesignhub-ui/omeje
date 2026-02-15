@@ -13,6 +13,7 @@ import { getMarketInsight } from '../services/geminiService';
 import { TradingDashboard } from './TradingDashboard';
 import { WalletDashboard } from './WalletScreens';
 import { Language } from '../services/translations';
+import { ChatWidget } from '../components/ChatWidget';
 
 // --- Currency Config ---
 const CURRENCIES = {
@@ -474,6 +475,9 @@ export const MainApp: React.FC<{
       <main className="p-4 max-w-lg mx-auto md:max-w-4xl min-h-screen">
         {renderContent()}
       </main>
+
+      {/* AI Chat Widget */}
+      <ChatWidget setLang={setLang} />
 
       {/* Bottom Navigation */}
       {!selectedAsset && (
